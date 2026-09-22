@@ -1,8 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #000000;
+  --foreground: #f4f6fb;
+  --muted: #8d95a8;
+  --accent: #49ebff;
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -12,15 +15,156 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--background);
+  color: var(--foreground);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), sans-serif;
+  overflow-x: clip;
+}
+
+::selection {
+  background: rgba(73, 235, 255, 0.28);
+  color: white;
+}
+
+.aibay-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.aibay-md {
+  overflow-wrap: anywhere;
+  font-size: 15px;
+  line-height: 1.7;
+  color: #e7ebf3;
+}
+
+.aibay-md > * + * {
+  margin-top: 0.8rem;
+}
+
+.aibay-md h1,
+.aibay-md h2,
+.aibay-md h3 {
+  margin-top: 1.25rem;
+  color: white;
+  font-weight: 560;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.aibay-md h1 {
+  font-size: 1.35rem;
+}
+
+.aibay-md h2 {
+  font-size: 1.15rem;
+}
+
+.aibay-md h3 {
+  font-size: 1.02rem;
+}
+
+.aibay-md ul,
+.aibay-md ol {
+  padding-left: 1.25rem;
+}
+
+.aibay-md ul {
+  list-style: disc;
+}
+
+.aibay-md ol {
+  list-style: decimal;
+}
+
+.aibay-md li + li {
+  margin-top: 0.3rem;
+}
+
+.aibay-md strong {
+  font-weight: 620;
+  color: white;
+}
+
+.aibay-md em {
+  font-style: italic;
+}
+
+.aibay-md a {
+  color: #8ef0ff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.aibay-md blockquote {
+  border-left: 2px solid rgba(73, 235, 255, 0.45);
+  padding-left: 0.9rem;
+  color: #c5ccd8;
+}
+
+.aibay-md table {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: 0.92em;
+}
+
+.aibay-md th,
+.aibay-md td {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+}
+
+.aibay-md hr {
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@keyframes aibay-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.aibay-rise {
+  animation: aibay-rise 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.aibay-rise-2 {
+  animation-delay: 0.08s;
+}
+
+.aibay-rise-3 {
+  animation-delay: 0.16s;
+}
+
+.aibay-rise-4 {
+  animation-delay: 0.24s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aibay-rise,
+  .aibay-rise-2,
+  .aibay-rise-3,
+  .aibay-rise-4 {
+    animation: none;
+  }
 }
