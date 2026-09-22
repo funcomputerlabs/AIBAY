@@ -132,39 +132,3 @@ body {
   border: 0;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
-
-@keyframes aibay-rise {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-.aibay-rise {
-  animation: aibay-rise 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.aibay-rise-2 {
-  animation-delay: 0.08s;
-}
-
-.aibay-rise-3 {
-  animation-delay: 0.16s;
-}
-
-.aibay-rise-4 {
-  animation-delay: 0.24s;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .aibay-rise,
-  .aibay-rise-2,
-  .aibay-rise-3,
-  .aibay-rise-4 {
-    animation: none;
-  }
-}

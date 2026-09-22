@@ -1,11 +1,5 @@
-import type { Metadata } from "next";
-import { ChatScreen } from "@/components/ChatScreen";
-
-export const metadata: Metadata = {
-  title: "Chat",
-  description: "Talk with AIBAY.",
-};
+import { redirect } from "next/navigation";
 
 export default function ChatPage() {
-  return <ChatScreen />;
+  redirect("/");
 }
