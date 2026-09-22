@@ -1,6 +1,7 @@
 import { scheduleCloudSync } from "@/lib/cloud";
 import { MAX_STORED_CONVERSATIONS, STORAGE_KEY } from "@/lib/constants";
-import type { ChatState, Conversation, Message } from "@/lib/types";
+import { sanitizeMessage } from "@/lib/messages";
+import type { Attachment, ChatState, Conversation, Message } from "@/lib/types";
 import { titleFrom } from "@/lib/utils";
 
 export type { ChatState };
@@ -10,28 +11,25 @@ const EMPTY: ChatState = { conversations: [], activeId: null };
 let cachedRaw: string | null = null;
 let cachedState: ChatState = EMPTY;
 
-function isMessage(value: unknown): value is Message {
-  if (!value || typeof value !== "object") return false;
-  const message = value as Message;
-  return (
-    typeof message.id === "string" &&
-    (message.role === "user" || message.role === "assistant") &&
-    typeof message.content === "string" &&
-    typeof message.createdAt === "number"
-  );
-}
-
 function isConversation(value: unknown): value is Conversation {
   if (!value || typeof value !== "object") return false;
   const conversation = value as Conversation;
-  return (
-    typeof conversation.id === "string" &&
-    typeof conversation.title === "string" &&
-    typeof conversation.createdAt === "number" &&
-    typeof conversation.updatedAt === "number" &&
-    Array.isArray(conversation.messages) &&
-    conversation.messages.every(isMessage)
-  );
+  if (
+    typeof conversation.id !== "string" ||
+    typeof conversation.title !== "string" ||
+    typeof conversation.createdAt !== "number" ||
+    typeof conversation.updatedAt !== "number" ||
+    !Array.isArray(conversation.messages)
+  ) {
+    return false;
+  }
+
+  const messages = conversation.messages
+    .map((message) => sanitizeMessage(message))
+    .filter((message): message is Message => message !== null);
+  if (messages.length !== conversation.messages.length) return false;
+  conversation.messages = messages;
+  return true;
 }
 
 function parse(raw: string): ChatState {
@@ -167,7 +165,7 @@ export function dropAssistant(conversationId: string, messageId: string) {
   });
 }
 
-export function startExchange(content: string) {
+export function startExchange(content: string, attachments: Attachment[] = []) {
   const current = getSnapshot();
   const now = Date.now();
   const existing =
@@ -178,6 +176,7 @@ export function startExchange(content: string) {
     role: "user",
     content,
     createdAt: now,
+    ...(attachments.length ? { attachments } : {}),
   };
   const assistantMessage: Message = {
     id: crypto.randomUUID(),
@@ -191,7 +190,7 @@ export function startExchange(content: string) {
     title:
       existing && existing.messages.some((message) => message.role === "user")
         ? existing.title
-        : titleFrom(content),
+        : titleFrom(content || attachments[0]?.name || ""),
     messages: [...history, assistantMessage],
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,

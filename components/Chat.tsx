@@ -9,8 +9,11 @@ import { Logo } from "@/components/Logo";
 import { Settings } from "@/components/Settings";
 import { Sidebar } from "@/components/Sidebar";
 import { Welcome } from "@/components/Welcome";
-import { MAX_MESSAGES } from "@/lib/constants";
+import { MAX_ATTACHMENTS, MAX_MESSAGES } from "@/lib/constants";
+import { readAttachment } from "@/lib/files";
+import { toApiMessages } from "@/lib/messages";
 import { startAccountSync } from "@/lib/account";
+import type { Attachment } from "@/lib/types";
 import {
   activateConversation,
   beginRetry,
@@ -31,6 +34,8 @@ export function Chat() {
     getServerSnapshot,
   );
   const [draft, setDraft] = useState("");
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "streaming" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -61,7 +66,11 @@ export function Chat() {
     abortRef.current?.abort();
   }
 
-  async function streamReply(conversationId: string, history: { role: "user" | "assistant"; content: string }[], assistantId: string) {
+  async function streamReply(
+    conversationId: string,
+    history: Parameters<typeof toApiMessages>[0],
+    assistantId: string,
+  ) {
     const requestId = ++requestRef.current;
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -77,10 +86,7 @@ export function Chat() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: history.slice(-MAX_MESSAGES).map((message) => ({
-            role: message.role,
-            content: message.content,
-          })),
+          messages: toApiMessages(history.slice(-MAX_MESSAGES)),
         }),
         signal: controller.signal,
       });
@@ -141,14 +147,40 @@ export function Chat() {
     }
   }
 
-  function send(text: string) {
+  function send(text: string, files: Attachment[] = attachments) {
     const content = text.trim();
-    if (!content || status === "streaming") return;
+    if ((!content && files.length === 0) || status === "streaming") return;
     stickRef.current = true;
     setDraft("");
+    setAttachments([]);
+    setAttachmentError(null);
     setSidebarOpen(false);
-    const exchange = startExchange(content);
+    const exchange = startExchange(content, files);
     void streamReply(exchange.conversationId, exchange.history, exchange.assistantId);
+  }
+
+  async function addFiles(list: File[]) {
+    if (status === "streaming") return;
+    const room = MAX_ATTACHMENTS - attachments.length;
+    if (room <= 0) {
+      setAttachmentError("You can attach up to 4 files.");
+      return;
+    }
+
+    const next: Attachment[] = [];
+    let error: string | null = null;
+    for (const file of list.slice(0, room)) {
+      const result = await readAttachment(file);
+      if (!result.ok) {
+        error = result.error;
+        continue;
+      }
+      next.push(result.attachment);
+    }
+
+    if (list.length > room) error = "You can attach up to 4 files.";
+    setAttachmentError(error);
+    if (next.length) setAttachments((current) => [...current, ...next].slice(0, MAX_ATTACHMENTS));
   }
 
   function retry() {
@@ -172,6 +204,8 @@ export function Chat() {
     activateConversation(null);
     setError(null);
     setDraft("");
+    setAttachments([]);
+    setAttachmentError(null);
     setSidebarOpen(false);
     setStatus("idle");
   }
@@ -190,6 +224,8 @@ export function Chat() {
     clearConversations();
     setError(null);
     setDraft("");
+    setAttachments([]);
+    setAttachmentError(null);
     setStatus("idle");
   }
 
@@ -283,7 +319,16 @@ export function Chat() {
           ) : null}
           <ChatInput
             value={draft}
+            attachments={attachments}
+            attachmentError={attachmentError}
             onChange={setDraft}
+            onAttach={(files) => {
+              void addFiles(files);
+            }}
+            onRemoveAttachment={(id) => {
+              setAttachments((current) => current.filter((attachment) => attachment.id !== id));
+              setAttachmentError(null);
+            }}
             onSend={() => send(draft)}
             onStop={stop}
             streaming={streaming}

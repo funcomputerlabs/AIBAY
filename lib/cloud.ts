@@ -1,5 +1,6 @@
 import { collection, doc, getDocs, writeBatch } from "firebase/firestore";
 import { getFirebase } from "@/lib/firebase";
+import { sanitizeMessage } from "@/lib/messages";
 import type { ChatState, Conversation, Message } from "@/lib/types";
 
 let cloudUserId: string | null = null;
@@ -83,7 +84,17 @@ async function pushCloud(userId: string, state: ChatState) {
   for (const conversation of state.conversations) {
     batch.set(doc(firebase.db, "users", userId, "conversations", conversation.id), {
       title: conversation.title,
-      messages: conversation.messages,
+      messages: conversation.messages.map((message) => ({
+        id: message.id,
+        role: message.role,
+        content: message.content,
+        createdAt: message.createdAt,
+        ...(message.attachments?.some((attachment) => attachment.kind === "file")
+          ? {
+              attachments: message.attachments.filter((attachment) => attachment.kind === "file"),
+            }
+          : {}),
+      })),
       createdAt: conversation.createdAt,
       updatedAt: conversation.updatedAt,
     });
@@ -101,24 +112,17 @@ function toConversation(id: string, value: unknown): Conversation | null {
   const data = value as Partial<Conversation>;
   if (typeof data.title !== "string") return null;
   if (typeof data.createdAt !== "number" || typeof data.updatedAt !== "number") return null;
-  if (!Array.isArray(data.messages) || !data.messages.every(isMessage)) return null;
+  if (!Array.isArray(data.messages)) return null;
+  const messages = data.messages
+    .map((message) => sanitizeMessage(message))
+    .filter((message): message is Message => message !== null);
+  if (messages.length !== data.messages.length) return null;
 
   return {
     id,
     title: data.title,
-    messages: data.messages,
+    messages,
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
   };
-}
-
-function isMessage(value: unknown): value is Message {
-  if (!value || typeof value !== "object") return false;
-  const message = value as Message;
-  return (
-    typeof message.id === "string" &&
-    (message.role === "user" || message.role === "assistant") &&
-    typeof message.content === "string" &&
-    typeof message.createdAt === "number"
-  );
 }

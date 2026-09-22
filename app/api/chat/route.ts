@@ -22,9 +22,20 @@ export async function POST(request: Request) {
     return Response.json({ error: "Request is too large." }, { status: 413 });
   }
 
+  let raw: string;
+  try {
+    raw = await request.text();
+  } catch {
+    return Response.json({ error: "Invalid JSON." }, { status: 400 });
+  }
+
+  if (raw.length > MAX_BODY_BYTES) {
+    return Response.json({ error: "Request is too large." }, { status: 413 });
+  }
+
   let payload: unknown;
   try {
-    payload = await request.json();
+    payload = JSON.parse(raw);
   } catch {
     return Response.json({ error: "Invalid JSON." }, { status: 400 });
   }
