@@ -148,15 +148,16 @@ export function sanitizeMessage(value: unknown): Message | null {
   if (message.role !== "user" && message.role !== "assistant") return null;
   if (typeof message.content !== "string" || typeof message.createdAt !== "number") return null;
 
-  const attachments =
-    message.role === "user" ? sanitizeAttachments(message.attachments) : [];
+  const attachments = sanitizeAttachments(message.attachments);
+  const kept = message.role === "assistant" ? attachments.filter((item) => item.kind === "image") : attachments;
 
   return {
     id: message.id,
     role: message.role,
     content: message.content,
     createdAt: message.createdAt,
-    ...(attachments.length ? { attachments } : {}),
+    ...(message.role === "user" && message.purpose === "image" ? { purpose: "image" } : {}),
+    ...(kept.length ? { attachments: kept } : {}),
   };
 }
 
@@ -168,9 +169,12 @@ export function toApiMessages(messages: Message[]): ApiMessage[] {
   );
   const visibleImages = new Set(imageIds.slice(-MAX_IMAGES_PER_REQUEST));
 
-  return messages.map((message) => {
-    if (message.role === "assistant" || !message.attachments?.length) {
-      return { role: message.role, content: message.content };
+  return messages.flatMap((message): ApiMessage[] => {
+    if (message.role === "assistant") {
+      return message.content.trim() ? [{ role: "assistant", content: message.content }] : [];
+    }
+    if (!message.attachments?.length) {
+      return [{ role: "user", content: message.content }];
     }
 
     const blocks: string[] = [];
@@ -190,11 +194,13 @@ export function toApiMessages(messages: Message[]): ApiMessage[] {
     }
 
     const text = clipPrompt(blocks.join("\n\n") || "Look at the attached image.");
-    if (!images.length) return { role: "user", content: text };
-    return {
-      role: "user",
-      content: [{ type: "text", text }, ...images],
-    };
+    if (!images.length) return [{ role: "user" as const, content: text }];
+    return [
+      {
+        role: "user" as const,
+        content: [{ type: "text" as const, text }, ...images],
+      },
+    ];
   });
 }
 

@@ -10,7 +10,8 @@ import { Settings } from "@/components/Settings";
 import { Sidebar } from "@/components/Sidebar";
 import { Welcome } from "@/components/Welcome";
 import { MAX_ATTACHMENTS, MAX_MESSAGES } from "@/lib/constants";
-import { readAttachment } from "@/lib/files";
+import { compressDataUrl, readAttachment } from "@/lib/files";
+import { useI18n } from "@/lib/i18n";
 import { toApiMessages } from "@/lib/messages";
 import { startAccountSync } from "@/lib/account";
 import type { Attachment } from "@/lib/types";
@@ -19,6 +20,7 @@ import {
   beginRetry,
   clearConversations,
   dropAssistant,
+  finishAssistant,
   getServerSnapshot,
   getSnapshot,
   patchAssistant,
@@ -33,7 +35,9 @@ export function Chat() {
     getSnapshot,
     getServerSnapshot,
   );
+  const { locale, t, text } = useI18n();
   const [draft, setDraft] = useState("");
+  const [mode, setMode] = useState<"chat" | "image">("chat");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "streaming" | "error">("idle");
@@ -54,6 +58,10 @@ export function Chat() {
   useEffect(() => {
     startAccountSync();
   }, []);
+
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
 
   useEffect(() => {
     if (!stickRef.current) return;
@@ -86,6 +94,7 @@ export function Chat() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          locale,
           messages: toApiMessages(history.slice(-MAX_MESSAGES)),
         }),
         signal: controller.signal,
@@ -96,11 +105,11 @@ export function Chat() {
         const message =
           data && typeof data.error === "string"
             ? data.error.slice(0, 240)
-            : "AIBAY could not respond.";
+            : "couldNotRespond";
         throw new Error(message);
       }
 
-      if (!response.body) throw new Error("AIBAY could not respond.");
+      if (!response.body) throw new Error("couldNotRespond");
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -120,7 +129,7 @@ export function Chat() {
       if (!accumulated.trim()) {
         dropAssistant(conversationId, assistantId);
         if (!superseded()) {
-          setError("AIBAY returned an empty response.");
+          setError("emptyResponse");
           setStatus("error");
         }
         return;
@@ -139,7 +148,7 @@ export function Chat() {
       const message =
         caught instanceof Error && caught.message && caught.message !== "Failed to fetch"
           ? caught.message
-          : "Network error. Check your connection and try again.";
+          : "network";
       setError(message);
       setStatus("error");
     } finally {
@@ -149,7 +158,12 @@ export function Chat() {
 
   function send(text: string, files: Attachment[] = attachments) {
     const content = text.trim();
-    if ((!content && files.length === 0) || status === "streaming") return;
+    if (status === "streaming") return;
+    if (mode === "image") {
+      void sendImage(content);
+      return;
+    }
+    if (!content && files.length === 0) return;
     stickRef.current = true;
     setDraft("");
     setAttachments([]);
@@ -159,11 +173,77 @@ export function Chat() {
     void streamReply(exchange.conversationId, exchange.history, exchange.assistantId);
   }
 
+  async function sendImage(prompt: string, conversationId?: string, assistantId?: string) {
+    if (!prompt || status === "streaming") return;
+    stickRef.current = true;
+    setDraft("");
+    setAttachments([]);
+    setAttachmentError(null);
+    setSidebarOpen(false);
+
+    const exchange = conversationId && assistantId
+      ? { conversationId, assistantId }
+      : startExchange(prompt, [], "image");
+    const requestId = ++requestRef.current;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setStatus("streaming");
+    setError(null);
+
+    try {
+      const response = await fetch("/api/image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+        signal: controller.signal,
+      });
+      const data = (await response.json().catch(() => null)) as { error?: unknown; dataUrl?: unknown; caption?: unknown } | null;
+      if (!response.ok) {
+        const message = data && typeof data.error === "string" ? data.error : "imageFailed";
+        throw new Error(message);
+      }
+      if (!data || typeof data.dataUrl !== "string") throw new Error("imageFailed");
+      let dataUrl = data.dataUrl;
+      try {
+        dataUrl = await compressDataUrl(data.dataUrl);
+      } catch {
+        if (data.dataUrl.length > 1_200_000) throw new Error("imageFailed");
+      }
+      if (requestRef.current !== requestId) return;
+      finishAssistant(
+        exchange.conversationId,
+        exchange.assistantId,
+        typeof data.caption === "string" ? data.caption : "",
+        {
+          id: crypto.randomUUID(),
+          name: "aibay.jpg",
+          mime: "image/jpeg",
+          kind: "image",
+          dataUrl,
+        },
+      );
+      setStatus("idle");
+    } catch (caught) {
+      if (requestRef.current !== requestId) return;
+      dropAssistant(exchange.conversationId, exchange.assistantId);
+      if (controller.signal.aborted) {
+        setStatus("idle");
+        return;
+      }
+      const message = caught instanceof Error && caught.message ? caught.message : "imageFailed";
+      setError(message);
+      setStatus("error");
+    } finally {
+      if (abortRef.current === controller) abortRef.current = null;
+    }
+  }
+
   async function addFiles(list: File[]) {
     if (status === "streaming") return;
     const room = MAX_ATTACHMENTS - attachments.length;
     if (room <= 0) {
-      setAttachmentError("You can attach up to 4 files.");
+      setAttachmentError("tooManyFiles");
       return;
     }
 
@@ -178,7 +258,7 @@ export function Chat() {
       next.push(result.attachment);
     }
 
-    if (list.length > room) error = "You can attach up to 4 files.";
+    if (list.length > room) error = "tooManyFiles";
     setAttachmentError(error);
     if (next.length) setAttachments((current) => [...current, ...next].slice(0, MAX_ATTACHMENTS));
   }
@@ -188,6 +268,11 @@ export function Chat() {
     const exchange = beginRetry(active.id);
     if (!exchange) return;
     stickRef.current = true;
+    const last = exchange.history[exchange.history.length - 1];
+    if (last?.purpose === "image") {
+      void sendImage(last.content, active.id, exchange.assistantId);
+      return;
+    }
     void streamReply(active.id, exchange.history, exchange.assistantId);
   }
 
@@ -259,7 +344,7 @@ export function Chat() {
         <header className="flex h-16 shrink-0 items-center gap-2 border-b border-white/[0.06] px-3 md:hidden">
           <button
             type="button"
-            aria-label="Open menu"
+            aria-label={t("openMenu")}
             onClick={() => setSidebarOpen(true)}
             className="flex h-10 w-10 items-center justify-center rounded-lg text-zinc-300 hover:bg-white/[0.05]"
           >
@@ -286,7 +371,7 @@ export function Chat() {
           className="aibay-scroll min-h-0 flex-1 overflow-y-auto"
         >
           {showWelcome ? (
-            <Welcome onSuggest={send} />
+            <Welcome mode={mode} onSuggest={send} />
           ) : (
             <div className="mx-auto flex w-full max-w-3xl flex-col gap-7 px-4 py-8 sm:px-6">
               {active.messages.map((message, index) => (
@@ -298,6 +383,11 @@ export function Chat() {
                     message.role === "assistant" &&
                     index === active.messages.length - 1
                   }
+                  onRegenerate={
+                    !streaming && message.role === "assistant" && index === active.messages.length - 1
+                      ? retry
+                      : undefined
+                  }
                 />
               ))}
             </div>
@@ -307,21 +397,29 @@ export function Chat() {
         <div className="shrink-0">
           {error ? (
             <div className="mx-auto flex w-[min(100%-1.5rem,48rem)] items-start justify-between gap-3 rounded-xl border border-red-400/25 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-              <p>{error}</p>
+              <p>{text(error)}</p>
               <button
                 type="button"
                 onClick={retry}
                 className="shrink-0 text-xs font-medium text-white underline underline-offset-2"
               >
-                Try again
+                {t("tryAgain")}
               </button>
             </div>
           ) : null}
           <ChatInput
             value={draft}
+            mode={mode}
             attachments={attachments}
             attachmentError={attachmentError}
             onChange={setDraft}
+            onMode={(next) => {
+              setMode(next);
+              if (next === "image") {
+                setAttachments([]);
+                setAttachmentError(null);
+              }
+            }}
             onAttach={(files) => {
               void addFiles(files);
             }}

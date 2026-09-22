@@ -1,5 +1,6 @@
 import { MAX_BODY_BYTES } from "@/lib/constants";
 import { createChatStream, getGroqModel, isGroqConfigured, toPublicError } from "@/lib/groq";
+import { isLocale } from "@/lib/locale";
 import { validateMessages } from "@/lib/messages";
 
 export const runtime = "nodejs";
@@ -45,6 +46,9 @@ export async function POST(request: Request) {
     return Response.json({ error: validation.error }, { status: validation.status });
   }
 
+  const requested = (payload as { locale?: unknown }).locale;
+  const locale = isLocale(requested) ? requested : "en";
+
   if (!isGroqConfigured()) {
     return Response.json(
       { error: "Groq is not configured. Set GROQ_API_KEY on the server." },
@@ -54,7 +58,7 @@ export async function POST(request: Request) {
 
   let completion;
   try {
-    completion = await createChatStream(validation.messages, request.signal);
+    completion = await createChatStream(validation.messages, request.signal, locale);
   } catch (error) {
     if (request.signal.aborted) {
       return new Response(null, { status: 499 });

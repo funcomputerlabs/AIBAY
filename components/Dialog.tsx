@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useI18n } from "@/lib/i18n";
 
 type DialogProps = {
   title: string;
@@ -9,6 +10,7 @@ type DialogProps = {
 };
 
 export function Dialog({ title, onClose, children }: DialogProps) {
+  const { t } = useI18n();
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
@@ -36,7 +38,7 @@ export function Dialog({ title, onClose, children }: DialogProps) {
     <div className="fixed inset-0 z-50 flex items-end justify-center p-3 sm:items-center sm:p-6">
       <button
         type="button"
-        aria-label="Close"
+        aria-label={t("close")}
         className="absolute inset-0 bg-black/70"
         onClick={onClose}
       />
@@ -57,7 +59,7 @@ export function Dialog({ title, onClose, children }: DialogProps) {
             onClick={onClose}
             className="rounded-full px-2 py-1 text-sm text-zinc-500 transition hover:text-white"
           >
-            Close
+            {t("close")}
           </button>
         </div>
         <div className="mt-4">{children}</div>

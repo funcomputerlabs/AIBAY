@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { AccountButton } from "@/components/Account";
 import { Logo } from "@/components/Logo";
+import { useI18n } from "@/lib/i18n";
+import { LOCALE_LABELS, LOCALES, isLocale } from "@/lib/locale";
 import type { Conversation } from "@/lib/types";
 import { cn, formatWhen } from "@/lib/utils";
 
@@ -31,6 +33,7 @@ export function Sidebar({
   onAbout,
   onAccount,
 }: SidebarProps) {
+  const { locale, setLocale, t } = useI18n();
   const recent = [...conversations].sort((a, b) => b.updatedAt - a.updatedAt);
 
   return (
@@ -38,7 +41,7 @@ export function Sidebar({
       {open ? (
         <button
           type="button"
-          aria-label="Close menu"
+          aria-label={t("closeMenu")}
           className="fixed inset-0 z-30 bg-black/60 md:hidden"
           onClick={onClose}
         />
@@ -64,16 +67,16 @@ export function Sidebar({
           <span aria-hidden className="text-base leading-none">
             +
           </span>
-          New chat
+          {t("newChat")}
         </button>
 
         <div className="mt-6 flex min-h-0 flex-1 flex-col">
           <p className="px-4 text-[11px] font-medium tracking-[0.16em] text-zinc-500 uppercase">
-            Recent chats
+            {t("recent")}
           </p>
           <div className="aibay-scroll mt-2 flex-1 overflow-y-auto px-2 pb-3">
             {recent.length === 0 ? (
-              <p className="px-2 py-3 text-sm text-zinc-600">No conversations yet.</p>
+              <p className="px-2 py-3 text-sm text-zinc-600">{t("emptyChats")}</p>
             ) : (
               <ul className="space-y-0.5">
                 {recent.map((conversation) => {
@@ -100,13 +103,13 @@ export function Sidebar({
                         <span className="min-w-0 flex-1">
                           <span className="block truncate">{conversation.title}</span>
                           <span className="block text-[11px] text-zinc-600">
-                            {formatWhen(conversation.updatedAt)}
+                            {formatWhen(conversation.updatedAt, locale)}
                           </span>
                         </span>
                       </button>
                       <button
                         type="button"
-                        aria-label={`Delete ${conversation.title}`}
+                        aria-label={`${t("delete")} ${conversation.title}`}
                         onClick={() => onDelete(conversation.id)}
                         className="mr-1 rounded-md p-1.5 text-zinc-600 opacity-100 transition hover:bg-white/[0.06] hover:text-zinc-200 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
                       >
@@ -131,19 +134,36 @@ export function Sidebar({
 
         <div className="border-t border-white/[0.06] p-2">
           <AccountButton onOpen={onAccount} />
+          <label className="flex h-10 items-center justify-between gap-3 rounded-lg px-3 text-sm text-zinc-400">
+            <span>{t("language")}</span>
+            <select
+              value={locale}
+              aria-label={t("language")}
+              onChange={(event) => {
+                if (isLocale(event.target.value)) setLocale(event.target.value);
+              }}
+              className="max-w-[9rem] bg-transparent text-right text-sm text-zinc-200 outline-none"
+            >
+              {LOCALES.map((code) => (
+                <option key={code} value={code} className="bg-black text-white">
+                  {LOCALE_LABELS[code]}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             type="button"
             onClick={onSettings}
             className="flex h-10 w-full items-center rounded-lg px-3 text-sm text-zinc-400 transition hover:bg-white/[0.04] hover:text-white"
           >
-            Settings
+            {t("settings")}
           </button>
           <button
             type="button"
             onClick={onAbout}
             className="flex h-10 w-full items-center rounded-lg px-3 text-sm text-zinc-400 transition hover:bg-white/[0.04] hover:text-white"
           >
-            About AIBAY
+            {t("about")}
           </button>
         </div>
       </aside>

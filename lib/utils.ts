@@ -8,13 +8,13 @@ export function titleFrom(content: string) {
   return `${line.slice(0, 47).trimEnd()}…`;
 }
 
-export function formatWhen(timestamp: number) {
+export function formatWhen(timestamp: number, locale?: string) {
   const date = new Date(timestamp);
   const now = new Date();
   if (date.toDateString() === now.toDateString()) {
-    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return date.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
   }
-  return date.toLocaleDateString([], { month: "short", day: "numeric" });
+  return date.toLocaleDateString(locale, { month: "short", day: "numeric" });
 }
 
 export function createId() {

@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useI18n } from "@/lib/i18n";
 
 function textFrom(node: ReactNode): string {
   if (typeof node === "string" || typeof node === "number") return String(node);
@@ -11,6 +12,7 @@ function textFrom(node: ReactNode): string {
 }
 
 function CodeBlock({ code, language }: { code: string; language?: string }) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
 
   async function copy() {
@@ -42,7 +44,7 @@ function CodeBlock({ code, language }: { code: string; language?: string }) {
           onClick={copy}
           className="text-xs text-zinc-400 transition hover:text-white"
         >
-          {copied ? "Copied" : "Copy"}
+          {copied ? t("copied") : t("copy")}
         </button>
       </div>
       <pre className="overflow-x-auto p-4 font-mono text-[13px] leading-6 text-zinc-100">

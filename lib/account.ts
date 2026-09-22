@@ -60,7 +60,7 @@ export function startAccountSync() {
     if (!accountState.email) return;
     publish({
       ...accountState,
-      warning: "Signed in. Chats stay on this device until Firestore is enabled.",
+      warning: "cloudLocal",
     });
   });
 
@@ -106,7 +106,7 @@ async function adoptCloud(userId: string, token: number) {
     if (token !== generation) return;
     publish({
       ...accountState,
-      warning: "Signed in, but chats could not be loaded from your account.",
+      warning: "cloudLoadFailed",
     });
   }
 }
@@ -137,27 +137,25 @@ export async function signOutAccount() {
 }
 
 export function accountErrorMessage(error: unknown) {
-  if (!(error instanceof FirebaseError)) {
-    return error instanceof Error ? error.message : "Something went wrong.";
-  }
+  if (!(error instanceof FirebaseError)) return "authFailed";
 
   switch (error.code) {
     case "auth/email-already-in-use":
-      return "That email already has an account. Sign in instead.";
+      return "authEmailUsed";
     case "auth/invalid-email":
-      return "Enter a valid email address.";
+      return "authInvalidEmail";
     case "auth/weak-password":
-      return "Use at least 8 characters.";
+      return "authWeakPassword";
     case "auth/invalid-credential":
     case "auth/wrong-password":
     case "auth/user-not-found":
-      return "Email or password is incorrect.";
+      return "authBadCredential";
     case "auth/too-many-requests":
-      return "Too many attempts. Wait a moment and try again.";
+      return "authTooMany";
     case "auth/operation-not-allowed":
-      return "Email sign-in is turned off in Firebase. Enable Email/Password.";
+      return "authDisabled";
     default:
-      return "The account request could not be completed.";
+      return "authFailed";
   }
 }
 

@@ -2,6 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { Dialog } from "@/components/Dialog";
+import { useI18n } from "@/lib/i18n";
 import {
   accountErrorMessage,
   createAccount,
@@ -19,10 +20,11 @@ export function useAccount() {
 
 export function AccountButton({ onOpen }: { onOpen: () => void }) {
   const account = useAccount();
+  const { t, text } = useI18n();
 
   if (!account.ready) {
     return (
-      <p className="px-3 py-2 text-xs text-zinc-600">Account</p>
+      <p className="px-3 py-2 text-xs text-zinc-600">{t("accountLabel")}</p>
     );
   }
 
@@ -30,7 +32,7 @@ export function AccountButton({ onOpen }: { onOpen: () => void }) {
     return (
       <div className="px-1">
         <p className="truncate px-2 text-xs text-zinc-500">{account.email}</p>
-        {account.warning ? <p className="px-2 pt-1 text-xs text-amber-200/80">{account.warning}</p> : null}
+        {account.warning ? <p className="px-2 pt-1 text-xs text-amber-200/80">{text(account.warning)}</p> : null}
         <button
           type="button"
           onClick={() => {
@@ -38,7 +40,7 @@ export function AccountButton({ onOpen }: { onOpen: () => void }) {
           }}
           className="flex h-10 w-full items-center rounded-lg px-2 text-sm text-zinc-300 transition hover:bg-white/[0.04] hover:text-white"
         >
-          Sign out
+          {t("signOut")}
         </button>
       </div>
     );
@@ -50,7 +52,7 @@ export function AccountButton({ onOpen }: { onOpen: () => void }) {
       onClick={onOpen}
       className="flex h-10 w-full items-center rounded-lg px-3 text-sm text-zinc-300 transition hover:bg-white/[0.04] hover:text-white"
     >
-      Create account
+      {t("createAccount")}
     </button>
   );
 }
@@ -63,12 +65,13 @@ export function AccountDialog({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const { t, text } = useI18n();
 
   async function submit() {
     setError(null);
     setNotice(null);
     if (!email.trim() || password.length < 8) {
-      setError("Use a valid email and at least 8 characters.");
+      setError("validEmail");
       return;
     }
     setBusy(true);
@@ -87,13 +90,13 @@ export function AccountDialog({ onClose }: { onClose: () => void }) {
     setError(null);
     setNotice(null);
     if (!email.trim()) {
-      setError("Enter your email first.");
+      setError("enterEmail");
       return;
     }
     setBusy(true);
     try {
       await sendReset(email.trim());
-      setNotice("Password reset email sent.");
+      setNotice("resetSent");
     } catch (caught) {
       setError(accountErrorMessage(caught));
     } finally {
@@ -102,9 +105,9 @@ export function AccountDialog({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <Dialog title={mode === "create" ? "Create account" : "Sign in"} onClose={onClose}>
+    <Dialog title={mode === "create" ? t("createAccount") : t("signIn")} onClose={onClose}>
       <div className="space-y-4 text-sm leading-6 text-zinc-400">
-        <p>An account is optional. You can keep chatting on this device without one.</p>
+        <p>{t("accountOptional")}</p>
         {account.configured ? (
           <form
             className="space-y-3"
@@ -114,7 +117,7 @@ export function AccountDialog({ onClose }: { onClose: () => void }) {
             }}
           >
             <label className="block">
-              <span className="mb-1 block text-xs tracking-wide text-zinc-500 uppercase">Email</span>
+              <span className="mb-1 block text-xs tracking-wide text-zinc-500 uppercase">{t("email")}</span>
               <input
                 type="email"
                 autoComplete="email"
@@ -124,7 +127,7 @@ export function AccountDialog({ onClose }: { onClose: () => void }) {
               />
             </label>
             <label className="block">
-              <span className="mb-1 block text-xs tracking-wide text-zinc-500 uppercase">Password</span>
+              <span className="mb-1 block text-xs tracking-wide text-zinc-500 uppercase">{t("password")}</span>
               <input
                 type="password"
                 autoComplete={mode === "create" ? "new-password" : "current-password"}
@@ -133,14 +136,14 @@ export function AccountDialog({ onClose }: { onClose: () => void }) {
                 className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 text-white outline-none focus:border-[#49ebff]/50"
               />
             </label>
-            {error ? <p className="text-sm text-red-200">{error}</p> : null}
-            {notice ? <p className="text-sm text-zinc-200">{notice}</p> : null}
+            {error ? <p className="text-sm text-red-200">{text(error)}</p> : null}
+            {notice ? <p className="text-sm text-zinc-200">{text(notice)}</p> : null}
             <button
               type="submit"
               disabled={busy}
               className="h-11 w-full rounded-full bg-white text-sm font-medium text-black transition hover:bg-[#e7fbff] disabled:opacity-60"
             >
-              {busy ? "Please wait" : mode === "create" ? "Create account" : "Sign in"}
+              {busy ? t("pleaseWait") : mode === "create" ? t("createAccount") : t("signIn")}
             </button>
             <button
               type="button"
@@ -151,7 +154,7 @@ export function AccountDialog({ onClose }: { onClose: () => void }) {
                 setNotice(null);
               }}
             >
-              {mode === "create" ? "I already have an account" : "Create a new account"}
+              {mode === "create" ? t("haveAccount") : t("newAccount")}
             </button>
             {mode === "sign-in" ? (
               <button
@@ -161,15 +164,12 @@ export function AccountDialog({ onClose }: { onClose: () => void }) {
                   void resetPassword();
                 }}
               >
-                Forgot password
+                {t("forgot")}
               </button>
             ) : null}
           </form>
         ) : (
-          <p>
-            Accounts use Firebase. Add the Firebase values to <span className="text-zinc-200">.env.local</span> and
-            restart AIBAY. Until then, chatting works as a guest.
-          </p>
+          <p>{t("accountFirebase")}</p>
         )}
       </div>
     </Dialog>

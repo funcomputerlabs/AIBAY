@@ -50,10 +50,10 @@ export type ReadAttachmentResult =
 export async function readAttachment(file: File): Promise<ReadAttachmentResult> {
   const name = safeName(file.name);
   if (file.size <= 0) {
-    return { ok: false, error: "That file is empty." };
+    return { ok: false, error: "emptyFile" };
   }
   if (file.size > MAX_ATTACHMENT_BYTES) {
-    return { ok: false, error: "That file is larger than 8 MB." };
+    return { ok: false, error: "fileTooLarge" };
   }
 
   if (IMAGE_TYPES.has(file.type)) {
@@ -70,18 +70,18 @@ export async function readAttachment(file: File): Promise<ReadAttachmentResult> 
         },
       };
     } catch {
-      return { ok: false, error: "AIBAY could not read that image." };
+      return { ok: false, error: "unreadableImage" };
     }
   }
 
   if (!isTextFile(file)) {
-    return { ok: false, error: "AIBAY can read images and text files." };
+    return { ok: false, error: "unsupported" };
   }
 
   try {
     const raw = (await file.text()).replace(/\u0000/g, "");
     const text = raw.trim();
-    if (!text) return { ok: false, error: "That file is empty." };
+    if (!text) return { ok: false, error: "emptyFile" };
     const clipped =
       text.length > MAX_FILE_TEXT_CHARS
         ? `${text.slice(0, MAX_FILE_TEXT_CHARS)}\n…[truncated]`
@@ -97,7 +97,7 @@ export async function readAttachment(file: File): Promise<ReadAttachmentResult> 
       },
     };
   } catch {
-    return { ok: false, error: "AIBAY could not read that file." };
+    return { ok: false, error: "unreadableFile" };
   }
 }
 
@@ -131,6 +131,21 @@ function imageDataUrl(file: File) {
       reject(new Error("unreadable"));
     };
     image.src = url;
+  });
+}
+
+export function compressDataUrl(dataUrl: string) {
+  return new Promise<string>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      try {
+        resolve(drawImage(image));
+      } catch (error) {
+        reject(error);
+      }
+    };
+    image.onerror = () => reject(new Error("unreadable"));
+    image.src = dataUrl;
   });
 }
 

@@ -10,6 +10,7 @@ import Groq, {
 import type { ChatCompletionMessageParam } from "groq-sdk/resources/chat/completions";
 
 import { DEFAULT_GROQ_MODEL, VISION_GROQ_MODEL } from "@/lib/constants";
+import { languageName, type Locale } from "@/lib/locale";
 import type { ApiMessage } from "@/lib/types";
 
 const SYSTEM_PROMPT = `You are AIBAY, an independent AI assistant.
@@ -28,7 +29,7 @@ export function isGroqConfigured() {
   return Boolean(process.env.GROQ_API_KEY?.trim());
 }
 
-export function createChatStream(messages: ApiMessage[], signal: AbortSignal) {
+export function createChatStream(messages: ApiMessage[], signal: AbortSignal, locale: Locale) {
   const apiKey = process.env.GROQ_API_KEY?.trim();
   if (!apiKey) {
     throw new Error("GROQ_NOT_CONFIGURED");
@@ -43,12 +44,18 @@ export function createChatStream(messages: ApiMessage[], signal: AbortSignal) {
       max_completion_tokens: 4096,
       stream: true,
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: systemPrompt(locale) },
         ...toGroqMessages(messages),
       ],
     },
     { signal },
   );
+}
+
+function systemPrompt(locale: Locale) {
+  const language = languageName(locale);
+  return `${SYSTEM_PROMPT}
+The interface language is ${language}. Reply in ${language} unless the user clearly writes in another language.`;
 }
 
 function toGroqMessages(messages: ApiMessage[]): ChatCompletionMessageParam[] {
@@ -73,26 +80,20 @@ function usesVision(messages: ApiMessage[]) {
 
 export function toPublicError(error: unknown): { message: string; status: number } {
   if (error instanceof AuthenticationError) {
-    return { message: "Groq rejected the server API key.", status: 401 };
+    return { message: "groqAuth", status: 401 };
   }
 
   if (error instanceof RateLimitError) {
-    return {
-      message: "Groq is rate limiting requests. Try again shortly.",
-      status: 429,
-    };
+    return { message: "groqRate", status: 429 };
   }
 
   if (error instanceof NotFoundError || error instanceof BadRequestError) {
-    return {
-      message: "The configured Groq model could not be used. Check GROQ_MODEL.",
-      status: 400,
-    };
+    return { message: "groqModel", status: 400 };
   }
 
   if (error instanceof APIError) {
-    return { message: "AIBAY could not complete the response.", status: 502 };
+    return { message: "groqIncomplete", status: 502 };
   }
 
-  return { message: "AIBAY could not reach Groq.", status: 502 };
+  return { message: "groqUnreachable", status: 502 };
 }

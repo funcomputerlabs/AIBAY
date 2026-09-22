@@ -89,6 +89,7 @@ async function pushCloud(userId: string, state: ChatState) {
         role: message.role,
         content: message.content,
         createdAt: message.createdAt,
+        ...(message.purpose === "image" ? { purpose: "image" as const } : {}),
         ...(message.attachments?.some((attachment) => attachment.kind === "file")
           ? {
               attachments: message.attachments.filter((attachment) => attachment.kind === "file"),

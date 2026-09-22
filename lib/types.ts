@@ -15,6 +15,7 @@ export type Message = {
   content: string;
   createdAt: number;
   attachments?: Attachment[];
+  purpose?: "image";
 };
 
 export type Conversation = {

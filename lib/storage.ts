@@ -150,6 +150,35 @@ export function patchAssistant(conversationId: string, messageId: string, conten
   });
 }
 
+export function finishAssistant(
+  conversationId: string,
+  messageId: string,
+  content: string,
+  image?: Attachment,
+) {
+  const current = getSnapshot();
+  commit({
+    ...current,
+    conversations: current.conversations.map((conversation) =>
+      conversation.id === conversationId
+        ? {
+            ...conversation,
+            updatedAt: Date.now(),
+            messages: conversation.messages.map((message) =>
+              message.id === messageId
+                ? {
+                    ...message,
+                    content,
+                    ...(image ? { attachments: [image] } : {}),
+                  }
+                : message,
+            ),
+          }
+        : conversation,
+    ),
+  });
+}
+
 export function dropAssistant(conversationId: string, messageId: string) {
   const current = getSnapshot();
   commit({
@@ -165,7 +194,11 @@ export function dropAssistant(conversationId: string, messageId: string) {
   });
 }
 
-export function startExchange(content: string, attachments: Attachment[] = []) {
+export function startExchange(
+  content: string,
+  attachments: Attachment[] = [],
+  purpose: "chat" | "image" = "chat",
+) {
   const current = getSnapshot();
   const now = Date.now();
   const existing =
@@ -177,6 +210,7 @@ export function startExchange(content: string, attachments: Attachment[] = []) {
     content,
     createdAt: now,
     ...(attachments.length ? { attachments } : {}),
+    ...(purpose === "image" ? { purpose: "image" as const } : {}),
   };
   const assistantMessage: Message = {
     id: crypto.randomUUID(),

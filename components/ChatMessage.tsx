@@ -1,15 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import { Logo } from "@/components/Logo";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
+import { useI18n } from "@/lib/i18n";
 import type { Message } from "@/lib/types";
 
 type ChatMessageProps = {
   message: Message;
   streaming?: boolean;
+  onRegenerate?: () => void;
 };
 
-export function ChatMessage({ message, streaming = false }: ChatMessageProps) {
+export function ChatMessage({ message, streaming = false, onRegenerate }: ChatMessageProps) {
+  const { t } = useI18n();
   if (message.role === "user") {
     return (
       <div className="flex justify-end">
@@ -28,7 +32,7 @@ export function ChatMessage({ message, streaming = false }: ChatMessageProps) {
                     />
                   ) : (
                     <span className="inline-flex max-w-full items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs text-zinc-200">
-                      <span className="tracking-wide text-zinc-500 uppercase">File</span>
+                      <span className="tracking-wide text-zinc-500 uppercase">{t("file")}</span>
                       <span className="truncate">{attachment.name}</span>
                     </span>
                   )}
@@ -42,7 +46,8 @@ export function ChatMessage({ message, streaming = false }: ChatMessageProps) {
     );
   }
 
-  const waiting = streaming && message.content.length === 0;
+  const waiting = streaming && message.content.length === 0 && !message.attachments?.length;
+  const image = message.attachments?.find((attachment) => attachment.kind === "image" && attachment.dataUrl);
 
   return (
     <div className="flex items-start gap-3 sm:gap-4">
@@ -55,20 +60,81 @@ export function ChatMessage({ message, streaming = false }: ChatMessageProps) {
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#49ebff] [animation-delay:150ms]" />
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#49ebff] [animation-delay:300ms]" />
             </span>
-            Generating
+            {t("generating")}
           </div>
         ) : (
           <div>
-            <MarkdownRenderer content={message.content} />
+            {image?.dataUrl ? (
+              // Generated and attached photos are data URLs, which next/image does not optimize.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={image.dataUrl}
+                alt={message.content || t("image")}
+                className="max-h-[28rem] max-w-full rounded-2xl object-contain"
+              />
+            ) : null}
+            {message.content ? <MarkdownRenderer content={message.content} /> : null}
             {streaming ? (
               <span
                 aria-hidden
                 className="ml-0.5 inline-block h-[1em] w-[2px] translate-y-[2px] animate-pulse bg-[#49ebff]"
               />
-            ) : null}
+            ) : (
+              <MessageActions content={message.content} imageUrl={image?.dataUrl} onRegenerate={onRegenerate} />
+            )}
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function MessageActions({
+  content,
+  imageUrl,
+  onRegenerate,
+}: {
+  content: string;
+  imageUrl?: string;
+  onRegenerate?: () => void;
+}) {
+  const { t } = useI18n();
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <div className="mt-3 flex flex-wrap gap-2">
+      {content ? (
+        <button
+          type="button"
+          onClick={() => {
+            void navigator.clipboard.writeText(content).then(() => {
+              setCopied(true);
+              window.setTimeout(() => setCopied(false), 1600);
+            });
+          }}
+          className="h-8 rounded-full px-3 text-xs text-zinc-400 transition hover:bg-white/[0.05] hover:text-white"
+        >
+          {copied ? t("copied") : t("copy")}
+        </button>
+      ) : null}
+      {imageUrl ? (
+        <a
+          href={imageUrl}
+          download="aibay.jpg"
+          className="flex h-8 items-center rounded-full px-3 text-xs text-zinc-400 transition hover:bg-white/[0.05] hover:text-white"
+        >
+          {t("download")}
+        </a>
+      ) : null}
+      {onRegenerate ? (
+        <button
+          type="button"
+          onClick={onRegenerate}
+          className="h-8 rounded-full px-3 text-xs text-zinc-400 transition hover:bg-white/[0.05] hover:text-white"
+        >
+          {t("regenerate")}
+        </button>
+      ) : null}
     </div>
   );
 }

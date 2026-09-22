@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Dialog } from "@/components/Dialog";
 import { useAccount } from "@/components/Account";
+import { useI18n } from "@/lib/i18n";
 
 type SettingsProps = {
   onClose: () => void;
@@ -14,6 +15,7 @@ export function Settings({ onClose, onClear }: SettingsProps) {
   const [model, setModel] = useState<string | null>(null);
   const [configured, setConfigured] = useState<boolean | null>(null);
   const account = useAccount();
+  const { t } = useI18n();
 
   useEffect(() => {
     let cancelled = false;
@@ -35,29 +37,23 @@ export function Settings({ onClose, onClear }: SettingsProps) {
   }, []);
 
   return (
-    <Dialog title="Settings" onClose={onClose}>
+    <Dialog title={t("settings")} onClose={onClose}>
       <div className="space-y-5 text-sm leading-6 text-zinc-400">
-        <p>
-          {account.email
-            ? "This account keeps your chats with you. Groq still runs only on the server."
-            : "Without an account, conversations stay on this device. Creating an account is optional."}
-        </p>
-        <p>
-          AIBAY calls GroqCloud from the server. The API key never reaches the browser.
-        </p>
+        <p>{account.email ? t("settingsAccount") : t("settingsGuest")}</p>
+        <p>{t("settingsGroq")}</p>
         <dl className="space-y-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
           <div className="flex items-center justify-between gap-4">
-            <dt className="text-zinc-500">Model</dt>
+            <dt className="text-zinc-500">{t("model")}</dt>
             <dd className="truncate font-mono text-xs text-zinc-200">{model ?? "—"}</dd>
           </div>
           <div className="flex items-center justify-between gap-4">
-            <dt className="text-zinc-500">Server</dt>
+            <dt className="text-zinc-500">{t("server")}</dt>
             <dd className="text-zinc-200">
-              {configured === null ? "—" : configured ? "Connected" : "Key missing"}
+              {configured === null ? "—" : configured ? t("connected") : t("keyMissing")}
             </dd>
           </div>
         </dl>
-        <p className="text-xs text-zinc-500">Enter sends. Shift + Enter adds a new line.</p>
+        <p className="text-xs text-zinc-500">{t("shortcut")}</p>
         <button
           type="button"
           onClick={() => {
@@ -70,7 +66,7 @@ export function Settings({ onClose, onClear }: SettingsProps) {
           }}
           className="h-10 w-full rounded-full border border-red-400/30 text-sm text-red-200 transition hover:bg-red-500/10"
         >
-          {armed ? "Confirm clear" : "Clear all conversations"}
+          {armed ? t("confirmClear") : t("clear")}
         </button>
       </div>
     </Dialog>

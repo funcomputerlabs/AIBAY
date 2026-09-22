@@ -2,13 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import { MAX_ATTACHMENTS, MAX_MESSAGE_CHARS } from "@/lib/constants";
+import { useI18n } from "@/lib/i18n";
 import type { Attachment } from "@/lib/types";
 
 type ChatInputProps = {
   value: string;
+  mode: "chat" | "image";
   attachments: Attachment[];
   attachmentError: string | null;
   onChange: (value: string) => void;
+  onMode: (mode: "chat" | "image") => void;
   onAttach: (files: File[]) => void;
   onRemoveAttachment: (id: string) => void;
   onSend: () => void;
@@ -18,19 +21,22 @@ type ChatInputProps = {
 
 export function ChatInput({
   value,
+  mode,
   attachments,
   attachmentError,
   onChange,
+  onMode,
   onAttach,
   onRemoveAttachment,
   onSend,
   onStop,
   streaming,
 }: ChatInputProps) {
+  const { t, text } = useI18n();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
-  const canSend = Boolean(value.trim() || attachments.length > 0);
+  const canSend = mode === "image" ? Boolean(value.trim()) : Boolean(value.trim() || attachments.length > 0);
 
   useEffect(() => {
     const textarea = textareaRef.current;
@@ -40,6 +46,7 @@ export function ChatInput({
   }, [value]);
 
   function takeFiles(list: FileList | File[] | null) {
+    if (mode !== "chat" || streaming) return;
     if (!list || streaming) return;
     const files = [...list];
     if (!files.length) return;
@@ -73,7 +80,15 @@ export function ChatInput({
             dragging ? "border-[#49ebff]/70" : "border-white/10"
           }`}
         >
-          {attachments.length ? (
+          <div className="flex gap-1 px-3 pt-3">
+            <ModeButton active={mode === "chat"} disabled={streaming} onClick={() => onMode("chat")}>
+              {t("chat")}
+            </ModeButton>
+            <ModeButton active={mode === "image"} disabled={streaming} onClick={() => onMode("image")}>
+              {t("image")}
+            </ModeButton>
+          </div>
+          {mode === "chat" && attachments.length ? (
             <ul className="flex flex-wrap gap-2 px-3 pt-3">
               {attachments.map((attachment) => (
                 <li key={attachment.id}>
@@ -83,15 +98,15 @@ export function ChatInput({
             </ul>
           ) : null}
           <label htmlFor="aibay-message" className="sr-only">
-            Message AIBAY
+            {mode === "image" ? t("imagePlaceholder") : t("messagePlaceholder")}
           </label>
           <textarea
             id="aibay-message"
             ref={textareaRef}
             rows={1}
             value={value}
-            maxLength={MAX_MESSAGE_CHARS}
-            placeholder="Message AIBAY"
+            maxLength={mode === "image" ? 1000 : MAX_MESSAGE_CHARS}
+            placeholder={mode === "image" ? t("imagePlaceholder") : t("messagePlaceholder")}
             autoComplete="off"
             className="max-h-52 min-h-14 w-full resize-none bg-transparent px-4 pt-4 pb-1 text-[15px] leading-6 text-white outline-none placeholder:text-zinc-600"
             onChange={(event) => onChange(event.target.value)}
@@ -115,15 +130,16 @@ export function ChatInput({
               multiple
               accept="image/png,image/jpeg,image/webp,image/gif,.txt,.md,.json,.csv,.ts,.tsx,.js,.jsx,.py,.html,.css,.xml,.yaml,.yml,.log"
               className="sr-only"
-              aria-label="Attach files"
+              aria-label={t("attach")}
               onChange={(event) => {
                 takeFiles(event.target.files);
                 event.target.value = "";
               }}
             />
+            {mode === "chat" ? (
             <button
               type="button"
-              aria-label="Attach files"
+              aria-label={t("attach")}
               disabled={streaming || attachments.length >= MAX_ATTACHMENTS}
               onClick={() => fileRef.current?.click()}
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-400 transition hover:bg-white/[0.06] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
@@ -139,9 +155,15 @@ export function ChatInput({
                 />
               </svg>
             </button>
+            ) : null}
             <p className="min-w-0 flex-1 truncate text-[11px] text-zinc-600">
-              {attachmentError ??
-                (streaming ? "Generating" : "Attach images or text files · Enter to send")}
+              {attachmentError
+                ? text(attachmentError)
+                : streaming
+                  ? t("generating")
+                  : mode === "image"
+                    ? t("imageHint")
+                    : t("composerHint")}
             </p>
             {streaming ? (
               <button
@@ -149,14 +171,14 @@ export function ChatInput({
                 onClick={onStop}
                 className="h-9 shrink-0 rounded-full bg-white px-4 text-xs font-medium text-black transition hover:bg-[#e7fbff]"
               >
-                Stop
+                {t("stop")}
               </button>
             ) : (
               <button
                 type="submit"
                 disabled={!canSend}
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-black transition hover:bg-[#e7fbff] disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-zinc-600"
-                aria-label="Send"
+                aria-label={t("send")}
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
                   <path
@@ -177,6 +199,32 @@ export function ChatInput({
   );
 }
 
+function ModeButton({
+  active,
+  disabled,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  disabled: boolean;
+  onClick: () => void;
+  children: string;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      aria-pressed={active}
+      onClick={onClick}
+      className={`h-8 rounded-full px-3 text-xs transition ${
+        active ? "bg-white text-black" : "text-zinc-400 hover:bg-white/[0.05] hover:text-white"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
 function AttachmentChip({
   attachment,
   onRemove,
@@ -184,6 +232,7 @@ function AttachmentChip({
   attachment: Attachment;
   onRemove: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <span className="inline-flex max-w-full items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] py-1 pr-1 pl-1">
       {attachment.kind === "image" && attachment.dataUrl ? (
@@ -196,14 +245,14 @@ function AttachmentChip({
         />
       ) : (
         <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/[0.06] text-[10px] tracking-wide text-zinc-400 uppercase">
-          File
+          {t("file")}
         </span>
       )}
       <span className="max-w-40 truncate text-xs text-zinc-200">{attachment.name}</span>
       <button
         type="button"
         onClick={onRemove}
-        aria-label={`Remove ${attachment.name}`}
+        aria-label={`${t("remove")} ${attachment.name}`}
         className="flex h-7 w-7 items-center justify-center rounded-full text-zinc-500 hover:bg-white/[0.06] hover:text-white"
       >
         <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
