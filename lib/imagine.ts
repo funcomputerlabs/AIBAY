@@ -2,7 +2,7 @@ import "server-only";
 
 import { getVercelOidcToken } from "@vercel/oidc";
 
-const MODEL = "google/gemini-3.1-flash-image-preview";
+const MODEL = "google/gemini-3.1-flash-image";
 const ENDPOINT = "https://ai-gateway.vercel.sh/v1/chat/completions";
 
 export async function generateImage(prompt: string, signal: AbortSignal) {
@@ -21,7 +21,13 @@ export async function generateImage(prompt: string, signal: AbortSignal) {
     body: JSON.stringify({
       model: MODEL,
       messages: [{ role: "user", content: prompt }],
-      modalities: ["image"],
+      modalities: ["text", "image"],
+      providerOptions: {
+        google: {
+          responseModalities: ["TEXT", "IMAGE"],
+          imageConfig: { imageSize: "1K" },
+        },
+      },
       stream: false,
     }),
     signal: AbortSignal.any([signal, timeout]),
@@ -29,7 +35,11 @@ export async function generateImage(prompt: string, signal: AbortSignal) {
 
   if (response.status === 429) throw new ImageError("rate", 429);
   if (!response.ok) {
-    console.error("AIBAY image request failed", { status: response.status });
+    const detail = await response.text().catch(() => "");
+    console.error("AIBAY image request failed", {
+      status: response.status,
+      detail: detail.replace(/\s+/g, " ").slice(0, 240),
+    });
     throw new ImageError("failed", response.status >= 500 ? 502 : 400);
   }
 
