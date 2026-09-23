@@ -36,11 +36,12 @@ export async function generateImage(prompt: string, signal: AbortSignal) {
   if (response.status === 429) throw new ImageError("rate", 429);
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
+    const brief = detail.replace(/\s+/g, " ").slice(0, 240);
     console.error("AIBAY image request failed", {
       status: response.status,
-      detail: detail.replace(/\s+/g, " ").slice(0, 240),
+      detail: brief,
     });
-    throw new ImageError("failed", response.status >= 500 ? 502 : 400);
+    throw new ImageError("failed", response.status >= 500 ? 502 : 400, brief);
   }
 
   const payload = (await response.json()) as {
@@ -80,11 +81,13 @@ export async function generateImage(prompt: string, signal: AbortSignal) {
 export class ImageError extends Error {
   status: number;
   code: "unavailable" | "failed" | "rate";
+  detail: string;
 
-  constructor(code: "unavailable" | "failed" | "rate", status: number) {
+  constructor(code: "unavailable" | "failed" | "rate", status: number, detail = "") {
     super(code);
     this.code = code;
     this.status = status;
+    this.detail = detail;
   }
 }
 

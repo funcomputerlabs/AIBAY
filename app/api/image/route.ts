@@ -29,7 +29,11 @@ export async function POST(request: Request) {
     if (request.signal.aborted) return new Response(null, { status: 499 });
     if (error instanceof ImageError) {
       const code = error.code === "unavailable" ? "imageUnavailable" : error.code === "rate" ? "imageRate" : "imageFailed";
-      return Response.json({ error: code }, { status: error.status });
+      const debug = request.headers.get("x-aibay-debug") === "1";
+      return Response.json(
+        { error: code, ...(debug && error.detail ? { detail: error.detail } : {}) },
+        { status: error.status },
+      );
     }
     console.error("AIBAY image request failed");
     return Response.json({ error: "imageFailed" }, { status: 502 });
