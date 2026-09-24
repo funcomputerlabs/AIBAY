@@ -1,13 +1,23 @@
 import "server-only";
 
-const ENDPOINT = "https://image.pollinations.ai/prompt/";
+const MODEL = "gemini-3.1-flash-image";
+const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/interactions";
 
 export async function generateImage(prompt: string, signal: AbortSignal) {
-  const text = prompt.replace(/\s+/g, " ").trim().slice(0, 500);
-  const url = `${ENDPOINT}${encodeURIComponent(text)}?width=1024&height=1024&nologo=true&model=flux`;
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  if (!apiKey) throw new ImageError("unavailable", 503);
+
   const timeout = AbortSignal.timeout(55_000);
-  const response = await fetch(url, {
-    headers: { Accept: "image/jpeg,image/png,image/webp" },
+  const response = await fetch(ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey,
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      input: [{ type: "text", text: prompt.slice(0, 1_000) }],
+    }),
     signal: AbortSignal.any([signal, timeout]),
   });
 
@@ -17,14 +27,17 @@ export async function generateImage(prompt: string, signal: AbortSignal) {
     throw new ImageError("failed", response.status >= 500 ? 502 : 400);
   }
 
-  const mime = (response.headers.get("content-type") ?? "").split(";")[0].trim();
-  const bytes = Buffer.from(await response.arrayBuffer());
+  const payload = (await response.json()) as {
+    output_image?: { data?: string; mime_type?: string };
+  };
+  const data = payload.output_image?.data;
+  if (!data) throw new ImageError("failed", 502);
+
+  const bytes = Buffer.from(data, "base64");
+  const mime = payload.output_image?.mime_type?.split(";")[0].trim() || "image/png";
   if (!isImage(bytes, mime)) throw new ImageError("failed", 502);
 
-  return {
-    dataUrl: `data:${mime};base64,${bytes.toString("base64")}`,
-    caption: "",
-  };
+  return { dataUrl: `data:${mime};base64,${data}`, caption: "" };
 }
 
 export class ImageError extends Error {
