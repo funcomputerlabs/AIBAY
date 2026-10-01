@@ -197,7 +197,7 @@ export function dropAssistant(conversationId: string, messageId: string) {
 export function startExchange(
   content: string,
   attachments: Attachment[] = [],
-  purpose: "chat" | "image" = "chat",
+  purpose: "chat" | "image" | "video" | "music" = "chat",
 ) {
   const current = getSnapshot();
   const now = Date.now();
@@ -210,7 +210,7 @@ export function startExchange(
     content,
     createdAt: now,
     ...(attachments.length ? { attachments } : {}),
-    ...(purpose === "image" ? { purpose: "image" as const } : {}),
+    ...(purpose === "chat" ? {} : { purpose }),
   };
   const assistantMessage: Message = {
     id: crypto.randomUUID(),

@@ -7,11 +7,11 @@ import type { Attachment } from "@/lib/types";
 
 type ChatInputProps = {
   value: string;
-  mode: "chat" | "image";
+  mode: "chat" | "image" | "video" | "music";
   attachments: Attachment[];
   attachmentError: string | null;
   onChange: (value: string) => void;
-  onMode: (mode: "chat" | "image") => void;
+  onMode: (mode: "chat" | "image" | "video" | "music") => void;
   onAttach: (files: File[]) => void;
   onRemoveAttachment: (id: string) => void;
   onSend: () => void;
@@ -36,7 +36,15 @@ export function ChatInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
-  const canSend = mode === "image" ? Boolean(value.trim()) : Boolean(value.trim() || attachments.length > 0);
+  const canSend = mode === "chat" ? Boolean(value.trim() || attachments.length > 0) : Boolean(value.trim());
+  const placeholder =
+    mode === "image"
+      ? t("imagePlaceholder")
+      : mode === "video"
+        ? t("videoPlaceholder")
+        : mode === "music"
+          ? t("musicPlaceholder")
+          : t("messagePlaceholder");
 
   useEffect(() => {
     const textarea = textareaRef.current;
@@ -87,6 +95,12 @@ export function ChatInput({
             <ModeButton active={mode === "image"} disabled={streaming} onClick={() => onMode("image")}>
               {t("image")}
             </ModeButton>
+            <ModeButton active={mode === "video"} disabled={streaming} onClick={() => onMode("video")}>
+              {t("video")}
+            </ModeButton>
+            <ModeButton active={mode === "music"} disabled={streaming} onClick={() => onMode("music")}>
+              {t("music")}
+            </ModeButton>
           </div>
           {mode === "chat" && attachments.length ? (
             <ul className="flex flex-wrap gap-2 px-3 pt-3">
@@ -98,15 +112,15 @@ export function ChatInput({
             </ul>
           ) : null}
           <label htmlFor="aibay-message" className="sr-only">
-            {mode === "image" ? t("imagePlaceholder") : t("messagePlaceholder")}
+            {placeholder}
           </label>
           <textarea
             id="aibay-message"
             ref={textareaRef}
             rows={1}
             value={value}
-            maxLength={mode === "image" ? 1000 : MAX_MESSAGE_CHARS}
-            placeholder={mode === "image" ? t("imagePlaceholder") : t("messagePlaceholder")}
+            maxLength={mode === "chat" ? MAX_MESSAGE_CHARS : 1000}
+            placeholder={placeholder}
             autoComplete="off"
             className="max-h-52 min-h-14 w-full resize-none bg-transparent px-4 pt-4 pb-1 text-[15px] leading-6 text-white outline-none placeholder:text-zinc-600"
             onChange={(event) => onChange(event.target.value)}
@@ -163,7 +177,11 @@ export function ChatInput({
                   ? t("generating")
                   : mode === "image"
                     ? t("imageHint")
-                    : t("composerHint")}
+                    : mode === "video"
+                      ? t("videoHint")
+                      : mode === "music"
+                        ? t("musicHint")
+                        : t("composerHint")}
             </p>
             {streaming ? (
               <button

@@ -89,10 +89,12 @@ async function pushCloud(userId: string, state: ChatState) {
         role: message.role,
         content: message.content,
         createdAt: message.createdAt,
-        ...(message.purpose === "image" ? { purpose: "image" as const } : {}),
-        ...(message.attachments?.some((attachment) => attachment.kind === "file")
+        ...(message.purpose && message.purpose !== "image" ? { purpose: message.purpose } : message.purpose === "image" ? { purpose: "image" as const } : {}),
+        ...(message.attachments?.some((attachment) => attachment.kind === "file" || attachment.kind === "video" || attachment.kind === "audio")
           ? {
-              attachments: message.attachments.filter((attachment) => attachment.kind === "file"),
+              attachments: message.attachments.filter(
+                (attachment) => attachment.kind === "file" || attachment.kind === "video" || attachment.kind === "audio",
+              ),
             }
           : {}),
       })),

@@ -149,14 +149,19 @@ export function sanitizeMessage(value: unknown): Message | null {
   if (typeof message.content !== "string" || typeof message.createdAt !== "number") return null;
 
   const attachments = sanitizeAttachments(message.attachments);
-  const kept = message.role === "assistant" ? attachments.filter((item) => item.kind === "image") : attachments;
+  const kept =
+    message.role === "assistant"
+      ? attachments.filter((item) => item.kind === "image" || item.kind === "video" || item.kind === "audio")
+      : attachments;
 
   return {
     id: message.id,
     role: message.role,
     content: message.content,
     createdAt: message.createdAt,
-    ...(message.role === "user" && message.purpose === "image" ? { purpose: "image" } : {}),
+    ...(message.role === "user" && (message.purpose === "image" || message.purpose === "video" || message.purpose === "music")
+      ? { purpose: message.purpose }
+      : {}),
     ...(kept.length ? { attachments: kept } : {}),
   };
 }
@@ -219,11 +224,20 @@ function sanitizeAttachment(value: unknown): Attachment | null {
   if (!value || typeof value !== "object") return null;
   const attachment = value as Partial<Attachment>;
   if (typeof attachment.id !== "string" || typeof attachment.name !== "string") return null;
-  if (attachment.kind !== "image" && attachment.kind !== "file") return null;
+  if (attachment.kind !== "image" && attachment.kind !== "file" && attachment.kind !== "video" && attachment.kind !== "audio") {
+    return null;
+  }
   if (typeof attachment.mime !== "string") return null;
 
   const name = attachment.name.replace(/[\u0000-\u001f]/g, "").trim().slice(0, 120);
   if (!name) return null;
+
+  if (attachment.kind === "video" || attachment.kind === "audio") {
+    if (typeof attachment.url !== "string" || !attachment.url.startsWith("https://") || attachment.url.length > 2_000) {
+      return null;
+    }
+    return { id: attachment.id, name, mime: attachment.mime.slice(0, 80), kind: attachment.kind, url: attachment.url };
+  }
 
   if (attachment.kind === "image") {
     if (typeof attachment.dataUrl !== "string") return null;

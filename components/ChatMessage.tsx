@@ -48,6 +48,8 @@ export function ChatMessage({ message, streaming = false, onRegenerate }: ChatMe
 
   const waiting = streaming && message.content.length === 0 && !message.attachments?.length;
   const image = message.attachments?.find((attachment) => attachment.kind === "image" && attachment.dataUrl);
+  const video = message.attachments?.find((attachment) => attachment.kind === "video" && attachment.url);
+  const audio = message.attachments?.find((attachment) => attachment.kind === "audio" && attachment.url);
 
   return (
     <div className="flex items-start gap-3 sm:gap-4">
@@ -73,6 +75,10 @@ export function ChatMessage({ message, streaming = false, onRegenerate }: ChatMe
                 className="max-h-[28rem] max-w-full rounded-2xl object-contain"
               />
             ) : null}
+            {video?.url ? (
+              <video src={video.url} controls playsInline className="max-h-[28rem] max-w-full rounded-2xl" />
+            ) : null}
+            {audio?.url ? <audio src={audio.url} controls className="w-full" /> : null}
             {message.content ? <MarkdownRenderer content={message.content} /> : null}
             {streaming ? (
               <span
@@ -80,7 +86,13 @@ export function ChatMessage({ message, streaming = false, onRegenerate }: ChatMe
                 className="ml-0.5 inline-block h-[1em] w-[2px] translate-y-[2px] animate-pulse bg-[#49ebff]"
               />
             ) : (
-              <MessageActions content={message.content} imageUrl={image?.dataUrl} onRegenerate={onRegenerate} />
+              <MessageActions
+                content={message.content}
+                imageUrl={image?.dataUrl}
+                mediaUrl={video?.url || audio?.url}
+                mediaName={video ? "aibay.mp4" : "aibay.mp3"}
+                onRegenerate={onRegenerate}
+              />
             )}
           </div>
         )}
@@ -92,10 +104,14 @@ export function ChatMessage({ message, streaming = false, onRegenerate }: ChatMe
 function MessageActions({
   content,
   imageUrl,
+  mediaUrl,
+  mediaName,
   onRegenerate,
 }: {
   content: string;
   imageUrl?: string;
+  mediaUrl?: string;
+  mediaName?: string;
   onRegenerate?: () => void;
 }) {
   const { t } = useI18n();
@@ -117,10 +133,10 @@ function MessageActions({
           {copied ? t("copied") : t("copy")}
         </button>
       ) : null}
-      {imageUrl ? (
+      {imageUrl || mediaUrl ? (
         <a
-          href={imageUrl}
-          download="aibay.jpg"
+          href={imageUrl || mediaUrl}
+          download={imageUrl ? "aibay.jpg" : mediaName}
           className="flex h-8 items-center rounded-full px-3 text-xs text-zinc-400 transition hover:bg-white/[0.05] hover:text-white"
         >
           {t("download")}

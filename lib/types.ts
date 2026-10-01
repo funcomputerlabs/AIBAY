@@ -4,9 +4,10 @@ export type Attachment = {
   id: string;
   name: string;
   mime: string;
-  kind: "image" | "file";
+  kind: "image" | "file" | "video" | "audio";
   dataUrl?: string;
   text?: string;
+  url?: string;
 };
 
 export type Message = {
@@ -15,7 +16,7 @@ export type Message = {
   content: string;
   createdAt: number;
   attachments?: Attachment[];
-  purpose?: "image";
+  purpose?: "image" | "video" | "music";
 };
 
 export type Conversation = {

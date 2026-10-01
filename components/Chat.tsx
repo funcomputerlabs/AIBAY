@@ -37,7 +37,7 @@ export function Chat() {
   );
   const { locale, t, text } = useI18n();
   const [draft, setDraft] = useState("");
-  const [mode, setMode] = useState<"chat" | "image">("chat");
+  const [mode, setMode] = useState<"chat" | "image" | "video" | "music">("chat");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "streaming" | "error">("idle");
@@ -163,6 +163,10 @@ export function Chat() {
       void sendImage(content);
       return;
     }
+    if (mode === "video" || mode === "music") {
+      void sendMedia(mode, content);
+      return;
+    }
     if (!content && files.length === 0) return;
     stickRef.current = true;
     setDraft("");
@@ -239,6 +243,57 @@ export function Chat() {
     }
   }
 
+  async function sendMedia(kind: "video" | "music", prompt: string, conversationId?: string, assistantId?: string) {
+    const requestId = ++requestRef.current;
+    setError(null);
+    setStatus("streaming");
+    const exchange = conversationId && assistantId ? { conversationId, assistantId } : startExchange(prompt, [], kind);
+    const controller = new AbortController();
+    abortRef.current = controller;
+    let jobId = "";
+
+    try {
+      while (requestRef.current === requestId) {
+        const response = await fetch("/api/media", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ kind, prompt, jobId: jobId || undefined }),
+          signal: controller.signal,
+        });
+        const data = (await response.json().catch(() => null)) as { error?: string; url?: string; pending?: boolean; jobId?: string } | null;
+        if (!response.ok) throw new Error(data?.error || `${kind}Failed`);
+        if (data?.pending) {
+          if (!data.jobId) throw new Error(`${kind}Failed`);
+          jobId = data.jobId;
+          continue;
+        }
+        if (!data?.url?.startsWith("https://")) throw new Error(`${kind}Failed`);
+        if (requestRef.current !== requestId) return;
+        finishAssistant(exchange.conversationId, exchange.assistantId, "", {
+          id: crypto.randomUUID(),
+          name: kind === "video" ? "aibay.mp4" : "aibay.mp3",
+          mime: kind === "video" ? "video/mp4" : "audio/mpeg",
+          kind: kind === "video" ? "video" : "audio",
+          url: data.url,
+        });
+        setStatus("idle");
+        return;
+      }
+    } catch (caught) {
+      if (requestRef.current !== requestId) return;
+      dropAssistant(exchange.conversationId, exchange.assistantId);
+      if (controller.signal.aborted) {
+        setStatus("idle");
+        return;
+      }
+      const message = caught instanceof Error && caught.message ? caught.message : `${kind}Failed`;
+      setError(message);
+      setStatus("error");
+    } finally {
+      if (abortRef.current === controller) abortRef.current = null;
+    }
+  }
+
   async function addFiles(list: File[]) {
     if (status === "streaming") return;
     const room = MAX_ATTACHMENTS - attachments.length;
@@ -271,6 +326,10 @@ export function Chat() {
     const last = exchange.history[exchange.history.length - 1];
     if (last?.purpose === "image") {
       void sendImage(last.content, active.id, exchange.assistantId);
+      return;
+    }
+    if (last?.purpose === "video" || last?.purpose === "music") {
+      void sendMedia(last.purpose, last.content, active.id, exchange.assistantId);
       return;
     }
     void streamReply(active.id, exchange.history, exchange.assistantId);
@@ -415,7 +474,7 @@ export function Chat() {
             onChange={setDraft}
             onMode={(next) => {
               setMode(next);
-              if (next === "image") {
+              if (next !== "chat") {
                 setAttachments([]);
                 setAttachmentError(null);
               }
