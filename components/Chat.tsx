@@ -6,11 +6,13 @@ import { AccountDialog } from "@/components/Account";
 import { ChatInput } from "@/components/ChatInput";
 import { ChatMessage } from "@/components/ChatMessage";
 import { Logo } from "@/components/Logo";
+import { Gallery } from "@/components/Gallery";
 import { Settings } from "@/components/Settings";
 import { Sidebar } from "@/components/Sidebar";
 import { Welcome } from "@/components/Welcome";
 import { MAX_ATTACHMENTS, MAX_MESSAGES } from "@/lib/constants";
 import { compressDataUrl, readAttachment } from "@/lib/files";
+import { seedGallery } from "@/lib/gallery";
 import { useI18n } from "@/lib/i18n";
 import { toApiMessages } from "@/lib/messages";
 import { startAccountSync } from "@/lib/account";
@@ -46,6 +48,7 @@ export function Chat() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [galleryOpen, setGalleryOpen] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
   const requestRef = useRef(0);
@@ -58,6 +61,10 @@ export function Chat() {
   useEffect(() => {
     startAccountSync();
   }, []);
+
+  useEffect(() => {
+    void seedGallery(conversations);
+  }, [conversations]);
 
   useEffect(() => {
     document.documentElement.lang = locale;
@@ -340,6 +347,7 @@ export function Chat() {
     activateConversation(id);
     setError(null);
     setSidebarOpen(false);
+    setGalleryOpen(false);
     stickRef.current = true;
   }
 
@@ -351,6 +359,7 @@ export function Chat() {
     setAttachments([]);
     setAttachmentError(null);
     setSidebarOpen(false);
+    setGalleryOpen(false);
     setStatus("idle");
   }
 
@@ -397,6 +406,11 @@ export function Chat() {
           setSidebarOpen(false);
           setAccountOpen(true);
         }}
+        galleryOpen={galleryOpen}
+        onGallery={() => {
+          setSidebarOpen(false);
+          setGalleryOpen((open) => !open);
+        }}
       />
 
       <section className="flex min-w-0 flex-1 flex-col">
@@ -429,7 +443,9 @@ export function Chat() {
           }}
           className="aibay-scroll min-h-0 flex-1 overflow-y-auto"
         >
-          {showWelcome ? (
+          {galleryOpen ? (
+            <Gallery />
+          ) : showWelcome ? (
             <Welcome mode={mode} onSuggest={send} />
           ) : (
             <div className="mx-auto flex w-full max-w-3xl flex-col gap-7 px-4 py-8 sm:px-6">
@@ -453,6 +469,7 @@ export function Chat() {
           )}
         </div>
 
+        {galleryOpen ? null : (
         <div className="shrink-0">
           {error ? (
             <div className="mx-auto flex w-[min(100%-1.5rem,48rem)] items-start justify-between gap-3 rounded-xl border border-red-400/25 bg-red-500/10 px-4 py-3 text-sm text-red-100">
@@ -491,6 +508,7 @@ export function Chat() {
             streaming={streaming}
           />
         </div>
+        )}
       </section>
 
       {settingsOpen ? <Settings onClose={() => setSettingsOpen(false)} onClear={clearAll} /> : null}

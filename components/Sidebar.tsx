@@ -19,6 +19,8 @@ type SidebarProps = {
   onSettings: () => void;
   onAbout: () => void;
   onAccount: () => void;
+  galleryOpen: boolean;
+  onGallery: () => void;
 };
 
 export function Sidebar({
@@ -32,6 +34,8 @@ export function Sidebar({
   onSettings,
   onAbout,
   onAccount,
+  galleryOpen,
+  onGallery,
 }: SidebarProps) {
   const { locale, setLocale, t } = useI18n();
   const recent = [...conversations].sort((a, b) => b.updatedAt - a.updatedAt);
@@ -68,6 +72,18 @@ export function Sidebar({
             +
           </span>
           {t("newChat")}
+        </button>
+
+        <button
+          type="button"
+          aria-pressed={galleryOpen}
+          onClick={onGallery}
+          className={cn(
+            "mx-3 mt-2 flex h-10 items-center rounded-xl px-3 text-sm transition",
+            galleryOpen ? "bg-white/[0.06] text-white" : "text-zinc-300 hover:bg-white/[0.04]",
+          )}
+        >
+          {t("gallery")}
         </button>
 
         <div className="mt-6 flex min-h-0 flex-1 flex-col">
