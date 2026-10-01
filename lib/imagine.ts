@@ -1,21 +1,31 @@
 import "server-only";
 
-const MODEL = "gemini-3.1-flash-image";
-const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/interactions";
+const GEMINI_MODEL = "gemini-3.1-flash-image";
+const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/interactions";
+const FREE_ENDPOINT = "https://image.pollinations.ai/prompt/";
 
 export async function generateImage(prompt: string, signal: AbortSignal) {
   const apiKey = process.env.GEMINI_API_KEY?.trim();
-  if (!apiKey) throw new ImageError("unavailable", 503);
+  if (apiKey) {
+    try {
+      return await geminiImage(prompt, apiKey, signal);
+    } catch (error) {
+      if (!(error instanceof ImageError) || error.code === "unavailable") throw error;
+    }
+  }
+  return freeImage(prompt, signal);
+}
 
+async function geminiImage(prompt: string, apiKey: string, signal: AbortSignal) {
   const timeout = AbortSignal.timeout(55_000);
-  const response = await fetch(ENDPOINT, {
+  const response = await fetch(GEMINI_ENDPOINT, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "x-goog-api-key": apiKey,
     },
     body: JSON.stringify({
-      model: MODEL,
+      model: GEMINI_MODEL,
       input: [{ type: "text", text: prompt.slice(0, 1_000) }],
     }),
     signal: AbortSignal.any([signal, timeout]),
@@ -36,8 +46,28 @@ export async function generateImage(prompt: string, signal: AbortSignal) {
   const bytes = Buffer.from(data, "base64");
   const mime = payload.output_image?.mime_type?.split(";")[0].trim() || "image/png";
   if (!isImage(bytes, mime)) throw new ImageError("failed", 502);
-
   return { dataUrl: `data:${mime};base64,${data}`, caption: "" };
+}
+
+async function freeImage(prompt: string, signal: AbortSignal) {
+  const text = prompt.replace(/\s+/g, " ").trim().slice(0, 500);
+  const url = `${FREE_ENDPOINT}${encodeURIComponent(text)}?width=1024&height=1024&nologo=true&model=flux`;
+  const timeout = AbortSignal.timeout(55_000);
+  const response = await fetch(url, {
+    headers: { Accept: "image/jpeg,image/png,image/webp" },
+    signal: AbortSignal.any([signal, timeout]),
+  });
+
+  if (response.status === 429) throw new ImageError("rate", 429);
+  if (!response.ok) {
+    console.error("AIBAY image request failed", { status: response.status });
+    throw new ImageError("failed", response.status >= 500 ? 502 : 400);
+  }
+
+  const mime = (response.headers.get("content-type") ?? "").split(";")[0].trim();
+  const bytes = Buffer.from(await response.arrayBuffer());
+  if (!isImage(bytes, mime)) throw new ImageError("failed", 502);
+  return { dataUrl: `data:${mime};base64,${bytes.toString("base64")}`, caption: "" };
 }
 
 export class ImageError extends Error {
