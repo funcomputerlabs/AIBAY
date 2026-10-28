@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { About } from "@/components/About";
-import { AccountDialog } from "@/components/Account";
+import { AccountDialog, useAccount } from "@/components/Account";
 import { ChatInput } from "@/components/ChatInput";
 import { ChatMessage } from "@/components/ChatMessage";
 import { Logo } from "@/components/Logo";
@@ -15,8 +15,10 @@ import { compressDataUrl, readAttachment } from "@/lib/files";
 import { seedGallery } from "@/lib/gallery";
 import { useI18n } from "@/lib/i18n";
 import { toApiMessages } from "@/lib/messages";
-import { startAccountSync } from "@/lib/account";
-import type { Attachment } from "@/lib/types";
+import { getAccountIdToken, startAccountSync } from "@/lib/account";
+import { appendImprove, getImproveText } from "@/lib/improve";
+import { isOwnerEmail } from "@/lib/owner";
+import type { Attachment, ComposerMode } from "@/lib/types";
 import {
   activateConversation,
   beginRetry,
@@ -38,8 +40,11 @@ export function Chat() {
     getServerSnapshot,
   );
   const { locale, t, text } = useI18n();
+  const account = useAccount();
+  const canImprove = isOwnerEmail(account.email);
   const [draft, setDraft] = useState("");
-  const [mode, setMode] = useState<"chat" | "image" | "video" | "music">("chat");
+  const [mode, setMode] = useState<ComposerMode>("chat");
+  const composerMode: ComposerMode = canImprove || mode !== "improve" ? mode : "chat";
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "streaming" | "error">("idle");
@@ -97,12 +102,18 @@ export function Chat() {
     const superseded = () => requestRef.current !== requestId;
 
     try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      const token = canImprove ? await getAccountIdToken() : null;
+      if (token) headers.Authorization = `Bearer ${token}`;
+      const last = history[history.length - 1];
       const response = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           locale,
           messages: toApiMessages(history.slice(-MAX_MESSAGES)),
+          ...(token && getImproveText() ? { improve: getImproveText() } : {}),
+          ...(token && last?.purpose === "improve" ? { task: "improve" } : {}),
         }),
         signal: controller.signal,
       });
@@ -166,12 +177,24 @@ export function Chat() {
   function send(text: string, files: Attachment[] = attachments) {
     const content = text.trim();
     if (status === "streaming") return;
-    if (mode === "image") {
+    if (composerMode === "image") {
       void sendImage(content);
       return;
     }
-    if (mode === "video" || mode === "music") {
-      void sendMedia(mode, content);
+    if (composerMode === "video" || composerMode === "music") {
+      void sendMedia(composerMode, content);
+      return;
+    }
+    if (composerMode === "improve") {
+      if (!content || !canImprove) return;
+      appendImprove(content);
+      stickRef.current = true;
+      setDraft("");
+      setAttachments([]);
+      setAttachmentError(null);
+      setSidebarOpen(false);
+      const improveExchange = startExchange(content, [], "improve");
+      void streamReply(improveExchange.conversationId, improveExchange.history, improveExchange.assistantId);
       return;
     }
     if (!content && files.length === 0) return;
@@ -446,7 +469,7 @@ export function Chat() {
           {galleryOpen ? (
             <Gallery />
           ) : showWelcome ? (
-            <Welcome mode={mode} onSuggest={send} />
+            <Welcome mode={composerMode} onSuggest={send} />
           ) : (
             <div className="mx-auto flex w-full max-w-3xl flex-col gap-7 px-4 py-8 sm:px-6">
               {active.messages.map((message, index) => (
@@ -485,7 +508,8 @@ export function Chat() {
           ) : null}
           <ChatInput
             value={draft}
-            mode={mode}
+            mode={composerMode}
+            canImprove={canImprove}
             attachments={attachments}
             attachmentError={attachmentError}
             onChange={setDraft}

@@ -1,13 +1,14 @@
 "use client";
 
 import { Logo } from "@/components/Logo";
-import { chatSuggestions, imageSuggestions, musicSuggestions, useI18n, videoSuggestions } from "@/lib/i18n";
+import { chatSuggestions, imageSuggestions, improveSuggestions, musicSuggestions, useI18n, videoSuggestions } from "@/lib/i18n";
+import type { ComposerMode } from "@/lib/types";
 
 export function Welcome({
   mode,
   onSuggest,
 }: {
-  mode: "chat" | "image" | "video" | "music";
+  mode: ComposerMode;
   onSuggest: (prompt: string) => void;
 }) {
   const { locale, t } = useI18n();
@@ -18,7 +19,9 @@ export function Welcome({
         ? videoSuggestions[locale]
         : mode === "music"
           ? musicSuggestions[locale]
-          : chatSuggestions[locale];
+          : mode === "improve"
+            ? improveSuggestions[locale]
+            : chatSuggestions[locale];
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col items-center justify-center px-5 py-16 text-center">

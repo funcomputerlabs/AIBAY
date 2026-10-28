@@ -159,7 +159,8 @@ export function sanitizeMessage(value: unknown): Message | null {
     role: message.role,
     content: message.content,
     createdAt: message.createdAt,
-    ...(message.role === "user" && (message.purpose === "image" || message.purpose === "video" || message.purpose === "music")
+    ...(message.role === "user" &&
+    (message.purpose === "image" || message.purpose === "video" || message.purpose === "music" || message.purpose === "improve")
       ? { purpose: message.purpose }
       : {}),
     ...(kept.length ? { attachments: kept } : {}),

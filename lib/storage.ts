@@ -197,7 +197,7 @@ export function dropAssistant(conversationId: string, messageId: string) {
 export function startExchange(
   content: string,
   attachments: Attachment[] = [],
-  purpose: "chat" | "image" | "video" | "music" = "chat",
+  purpose: "chat" | "image" | "video" | "music" | "improve" = "chat",
 ) {
   const current = getSnapshot();
   const now = Date.now();

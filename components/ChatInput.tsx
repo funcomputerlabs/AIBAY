@@ -3,15 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 import { MAX_ATTACHMENTS, MAX_MESSAGE_CHARS } from "@/lib/constants";
 import { useI18n } from "@/lib/i18n";
-import type { Attachment } from "@/lib/types";
+import type { Attachment, ComposerMode } from "@/lib/types";
 
 type ChatInputProps = {
   value: string;
-  mode: "chat" | "image" | "video" | "music";
+  mode: ComposerMode;
+  canImprove?: boolean;
   attachments: Attachment[];
   attachmentError: string | null;
   onChange: (value: string) => void;
-  onMode: (mode: "chat" | "image" | "video" | "music") => void;
+  onMode: (mode: ComposerMode) => void;
   onAttach: (files: File[]) => void;
   onRemoveAttachment: (id: string) => void;
   onSend: () => void;
@@ -22,6 +23,7 @@ type ChatInputProps = {
 export function ChatInput({
   value,
   mode,
+  canImprove = false,
   attachments,
   attachmentError,
   onChange,
@@ -44,7 +46,9 @@ export function ChatInput({
         ? t("videoPlaceholder")
         : mode === "music"
           ? t("musicPlaceholder")
-          : t("messagePlaceholder");
+          : mode === "improve"
+            ? t("improvePlaceholder")
+            : t("messagePlaceholder");
 
   useEffect(() => {
     const textarea = textareaRef.current;
@@ -88,7 +92,7 @@ export function ChatInput({
             dragging ? "border-[#49ebff]/70" : "border-white/10"
           }`}
         >
-          <div className="flex gap-1 px-3 pt-3">
+          <div className="flex flex-wrap gap-1 px-3 pt-3">
             <ModeButton active={mode === "chat"} disabled={streaming} onClick={() => onMode("chat")}>
               {t("chat")}
             </ModeButton>
@@ -101,6 +105,11 @@ export function ChatInput({
             <ModeButton active={mode === "music"} disabled={streaming} onClick={() => onMode("music")}>
               {t("music")}
             </ModeButton>
+            {canImprove ? (
+              <ModeButton active={mode === "improve"} disabled={streaming} onClick={() => onMode("improve")}>
+                {t("improve")}
+              </ModeButton>
+            ) : null}
           </div>
           {mode === "chat" && attachments.length ? (
             <ul className="flex flex-wrap gap-2 px-3 pt-3">
@@ -119,7 +128,7 @@ export function ChatInput({
             ref={textareaRef}
             rows={1}
             value={value}
-            maxLength={mode === "chat" ? MAX_MESSAGE_CHARS : 1000}
+            maxLength={mode === "chat" || mode === "improve" ? MAX_MESSAGE_CHARS : 1000}
             placeholder={placeholder}
             autoComplete="off"
             className="max-h-52 min-h-14 w-full resize-none bg-transparent px-4 pt-4 pb-1 text-[15px] leading-6 text-white outline-none placeholder:text-zinc-600"
@@ -181,7 +190,9 @@ export function ChatInput({
                       ? t("videoHint")
                       : mode === "music"
                         ? t("musicHint")
-                        : t("composerHint")}
+                        : mode === "improve"
+                          ? t("improveHint")
+                          : t("composerHint")}
             </p>
             {streaming ? (
               <button

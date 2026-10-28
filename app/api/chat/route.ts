@@ -1,4 +1,5 @@
 import { MAX_BODY_BYTES } from "@/lib/constants";
+import { isOwnerRequest } from "@/lib/firebase-token";
 import { createChatStream, getGroqModel, isGroqConfigured, toPublicError } from "@/lib/groq";
 import { isLocale } from "@/lib/locale";
 import { validateMessages } from "@/lib/messages";
@@ -46,8 +47,18 @@ export async function POST(request: Request) {
     return Response.json({ error: validation.error }, { status: validation.status });
   }
 
-  const requested = (payload as { locale?: unknown }).locale;
+  const requested = (payload as { locale?: unknown; improve?: unknown; task?: unknown }).locale;
   const locale = isLocale(requested) ? requested : "en";
+  const owner = await isOwnerRequest(request.headers.get("authorization"));
+  const extra = owner
+    ? {
+        instructions:
+          typeof (payload as { improve?: unknown }).improve === "string"
+            ? (payload as { improve: string }).improve.replace(/\u0000/g, "").trim().slice(0, 8_000)
+            : "",
+        task: (payload as { task?: unknown }).task === "improve" ? ("improve" as const) : undefined,
+      }
+    : undefined;
 
   if (!isGroqConfigured()) {
     return Response.json(
@@ -58,7 +69,7 @@ export async function POST(request: Request) {
 
   let completion;
   try {
-    completion = await createChatStream(validation.messages, request.signal, locale);
+    completion = await createChatStream(validation.messages, request.signal, locale, extra);
   } catch (error) {
     if (request.signal.aborted) {
       return new Response(null, { status: 499 });

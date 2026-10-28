@@ -16,8 +16,10 @@ export type Message = {
   content: string;
   createdAt: number;
   attachments?: Attachment[];
-  purpose?: "image" | "video" | "music";
+  purpose?: "image" | "video" | "music" | "improve";
 };
+
+export type ComposerMode = "chat" | "image" | "video" | "music" | "improve";
 
 export type Conversation = {
   id: string;
