@@ -21,6 +21,21 @@ export type Message = {
 
 export type ComposerMode = "chat" | "image" | "video" | "music" | "improve";
 
+export type PageField = {
+  id: number;
+  tag: string;
+  type: string;
+  label: string;
+  value: string;
+};
+
+export type PageContext = {
+  url: string;
+  title: string;
+  text: string;
+  fields: PageField[];
+};
+
 export type Conversation = {
   id: string;
   title: string;

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>AIBAY</title>
+    <link rel="stylesheet" href="sidepanel.css" />
+  </head>
+  <body>
+    <header>
+      <img src="aibay-logo.png" alt="AIBAY" width="1547" height="1017" />
+      <p id="page" class="page">Abre una pestaña web y habla con AIBAY.</p>
+    </header>
+    <main id="log" class="log"></main>
+    <form id="form">
+      <label class="sr-only" for="prompt">Mensaje</label>
+      <textarea id="prompt" rows="2" placeholder="Lee esta página y cambia lo que haga falta"></textarea>
+      <div class="row">
+        <button id="read" type="button">Leer página</button>
+        <button id="send" type="submit">Enviar</button>
+      </div>
+    </form>
+    <script src="sidepanel.js"></script>
+  </body>
+</html>

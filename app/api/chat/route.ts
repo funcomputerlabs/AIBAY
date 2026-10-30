@@ -4,6 +4,7 @@ import { getGlobalImprove, rememberGlobalImprove } from "@/lib/global-improve";
 import { createChatStream, getGroqModel, isGroqConfigured, toPublicError } from "@/lib/groq";
 import { isLocale } from "@/lib/locale";
 import { validateMessages } from "@/lib/messages";
+import { readPageContext } from "@/lib/page";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -59,6 +60,7 @@ export async function POST(request: Request) {
   const extra = {
     instructions: fromOwner || (await getGlobalImprove()),
     task: owner && (payload as { task?: unknown }).task === "improve" ? ("improve" as const) : undefined,
+    page: readPageContext((payload as { page?: unknown }).page),
   };
 
   if (!isGroqConfigured()) {
