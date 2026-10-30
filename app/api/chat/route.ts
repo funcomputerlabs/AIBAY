@@ -1,4 +1,6 @@
 import { MAX_BODY_BYTES } from "@/lib/constants";
+import { isOwnerRequest } from "@/lib/firebase-token";
+import { getGlobalImprove, rememberGlobalImprove } from "@/lib/global-improve";
 import { createChatStream, getGroqModel, isGroqConfigured, toPublicError } from "@/lib/groq";
 import { isLocale } from "@/lib/locale";
 import { validateMessages } from "@/lib/messages";
@@ -48,13 +50,15 @@ export async function POST(request: Request) {
 
   const requested = (payload as { locale?: unknown; improve?: unknown; task?: unknown }).locale;
   const locale = isLocale(requested) ? requested : "en";
-  const instructions =
-    typeof (payload as { improve?: unknown }).improve === "string"
+  const owner = await isOwnerRequest(request.headers.get("authorization"));
+  const fromOwner =
+    owner && typeof (payload as { improve?: unknown }).improve === "string"
       ? (payload as { improve: string }).improve.replace(/\u0000/g, "").trim().slice(0, 8_000)
       : "";
+  if (fromOwner) rememberGlobalImprove(fromOwner);
   const extra = {
-    instructions,
-    task: (payload as { task?: unknown }).task === "improve" ? ("improve" as const) : undefined,
+    instructions: fromOwner || (await getGlobalImprove()),
+    task: owner && (payload as { task?: unknown }).task === "improve" ? ("improve" as const) : undefined,
   };
 
   if (!isGroqConfigured()) {

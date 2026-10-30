@@ -8,6 +8,7 @@ import type { Attachment, ComposerMode } from "@/lib/types";
 type ChatInputProps = {
   value: string;
   mode: ComposerMode;
+  canImprove?: boolean;
   attachments: Attachment[];
   attachmentError: string | null;
   onChange: (value: string) => void;
@@ -22,6 +23,7 @@ type ChatInputProps = {
 export function ChatInput({
   value,
   mode,
+  canImprove = false,
   attachments,
   attachmentError,
   onChange,
@@ -103,9 +105,11 @@ export function ChatInput({
             <ModeButton active={mode === "music"} disabled={streaming} onClick={() => onMode("music")}>
               {t("music")}
             </ModeButton>
-            <ModeButton active={mode === "improve"} disabled={streaming} onClick={() => onMode("improve")}>
-              {t("improve")}
-            </ModeButton>
+            {canImprove ? (
+              <ModeButton active={mode === "improve"} disabled={streaming} onClick={() => onMode("improve")}>
+                {t("improve")}
+              </ModeButton>
+            ) : null}
           </div>
           {mode === "chat" && attachments.length ? (
             <ul className="flex flex-wrap gap-2 px-3 pt-3">

@@ -1,6 +1,17 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    match /config/improve {
+      allow read: if true;
+      allow delete: if request.auth != null
+        && request.auth.token.email == "alvarosanjuandominguez813@gmail.com";
+      allow create, update: if request.auth != null
+        && request.auth.token.email == "alvarosanjuandominguez813@gmail.com"
+        && request.resource.data.keys().hasOnly(["text", "updatedAt"])
+        && request.resource.data.text is string
+        && request.resource.data.text.size() < 12000
+        && request.resource.data.updatedAt is number;
+    }
     match /users/{userId}/settings/{docId} {
       allow read, delete: if request.auth != null && request.auth.uid == userId;
       allow create, update: if request.auth != null

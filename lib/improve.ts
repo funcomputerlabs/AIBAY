@@ -2,6 +2,7 @@
 
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { getFirebase } from "@/lib/firebase";
+import { isOwnerEmail } from "@/lib/owner";
 
 const STORAGE_KEY = "aibay.improve.v1";
 const MAX_IMPROVE_CHARS = 8_000;
@@ -53,16 +54,17 @@ export function appendImprove(line: string) {
 export async function loadImproveFromAccount() {
   const firebase = getFirebase();
   const user = firebase?.auth.currentUser;
-  if (!firebase || !user) return;
+  if (!firebase || !user || !isOwnerEmail(user.email)) return;
   try {
-    const snapshot = await getDoc(doc(firebase.db, "users", user.uid, "settings", "improve"));
-    if (!snapshot.exists()) return;
-    const data = snapshot.data() as Partial<ImproveState>;
-    if (typeof data.text !== "string" || typeof data.updatedAt !== "number") return;
+    const [global, personal] = await Promise.all([
+      getDoc(doc(firebase.db, "config", "improve")),
+      getDoc(doc(firebase.db, "users", user.uid, "settings", "improve")),
+    ]);
+    const remote = newer(toState(global.data()), toState(personal.data()));
     const local = read();
-    if (data.updatedAt >= local.updatedAt) {
-      write({ text: data.text.slice(0, MAX_IMPROVE_CHARS), updatedAt: data.updatedAt });
-    }
+    if (remote && remote.updatedAt >= local.updatedAt) write(remote);
+    const text = getImproveText();
+    if (text) void pushImprove(text);
   } catch {
     /* keep local rules */
   }
@@ -71,13 +73,31 @@ export async function loadImproveFromAccount() {
 async function pushImprove(text: string) {
   const firebase = getFirebase();
   const user = firebase?.auth.currentUser;
-  if (!firebase || !user) return;
+  if (!firebase || !user || !isOwnerEmail(user.email)) return;
+  const payload = { text, updatedAt: Date.now() };
   try {
-    await setDoc(doc(firebase.db, "users", user.uid, "settings", "improve"), {
-      text,
-      updatedAt: Date.now(),
-    });
+    await Promise.all([
+      setDoc(doc(firebase.db, "config", "improve"), payload),
+      setDoc(doc(firebase.db, "users", user.uid, "settings", "improve"), payload),
+    ]);
   } catch {
-    /* local rules still apply */
+    try {
+      await setDoc(doc(firebase.db, "users", user.uid, "settings", "improve"), payload);
+    } catch {
+      /* local rules still apply */
+    }
   }
+}
+
+function toState(value: unknown): ImproveState | null {
+  if (!value || typeof value !== "object") return null;
+  const data = value as Partial<ImproveState>;
+  if (typeof data.text !== "string" || typeof data.updatedAt !== "number") return null;
+  return { text: data.text.slice(0, MAX_IMPROVE_CHARS), updatedAt: data.updatedAt };
+}
+
+function newer(left: ImproveState | null, right: ImproveState | null) {
+  if (!left) return right;
+  if (!right) return left;
+  return left.updatedAt >= right.updatedAt ? left : right;
 }
