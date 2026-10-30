@@ -41,6 +41,7 @@ export function Settings({ onClose, onClear }: SettingsProps) {
       <div className="space-y-5 text-sm leading-6 text-zinc-400">
         <p>{account.email ? t("settingsAccount") : t("settingsGuest")}</p>
         <p>{t("settingsGroq")}</p>
+        <p>{t("settingsImprove")}</p>
         <dl className="space-y-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
           <div className="flex items-center justify-between gap-4">
             <dt className="text-zinc-500">{t("model")}</dt>

@@ -2,7 +2,6 @@
 
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { getFirebase } from "@/lib/firebase";
-import { isOwnerEmail } from "@/lib/owner";
 
 const STORAGE_KEY = "aibay.improve.v1";
 const MAX_IMPROVE_CHARS = 8_000;
@@ -54,7 +53,7 @@ export function appendImprove(line: string) {
 export async function loadImproveFromAccount() {
   const firebase = getFirebase();
   const user = firebase?.auth.currentUser;
-  if (!firebase || !user || !isOwnerEmail(user.email)) return;
+  if (!firebase || !user) return;
   try {
     const snapshot = await getDoc(doc(firebase.db, "users", user.uid, "settings", "improve"));
     if (!snapshot.exists()) return;
@@ -72,7 +71,7 @@ export async function loadImproveFromAccount() {
 async function pushImprove(text: string) {
   const firebase = getFirebase();
   const user = firebase?.auth.currentUser;
-  if (!firebase || !user || !isOwnerEmail(user.email)) return;
+  if (!firebase || !user) return;
   try {
     await setDoc(doc(firebase.db, "users", user.uid, "settings", "improve"), {
       text,

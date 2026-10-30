@@ -34,7 +34,7 @@ async function startJob(kind: "video" | "music", prompt: string, signal: AbortSi
         end_seconds: 5,
         aspect_ratio: "16:9",
         resolution: "480p",
-        style: { prompt: prompt.slice(0, 1_000) },
+        style: { prompt: enrichVideoPrompt(prompt) },
       }),
       signal,
     });
@@ -48,7 +48,7 @@ async function startJob(kind: "video" | "music", prompt: string, signal: AbortSi
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       custom_mode: false,
-      mv: "sonic-v4-5",
+      mv: "sonic-v5-5",
       title: "AIBAY",
       tags: "original",
       gpt_description_prompt: prompt.slice(0, 500),
@@ -112,6 +112,13 @@ async function checkJob(kind: "video" | "music", id: string, signal: AbortSignal
   const audio = firstHttpsAudio(payload);
   if (!audio) throw new StudioError("failed", 502);
   return audio;
+}
+
+function enrichVideoPrompt(prompt: string) {
+  const text = prompt.replace(/\s+/g, " ").trim();
+  if (!text) return text;
+  if (/camera|cinematic|smooth/i.test(text)) return text.slice(0, 1_000);
+  return `${text}, smooth camera, coherent motion`.slice(0, 1_000);
 }
 
 function firstHttpsAudio(value: unknown): string | null {

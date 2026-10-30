@@ -9,7 +9,6 @@ import { FirebaseError } from "firebase/app";
 import { flushCloudSync, loadCloudConversations, setCloudUser } from "@/lib/cloud";
 import { getFirebase, isFirebaseConfigured } from "@/lib/firebase";
 import { loadImproveFromAccount } from "@/lib/improve";
-import { isOwnerEmail } from "@/lib/owner";
 import { getSnapshot, replaceState } from "@/lib/storage";
 import { MAX_STORED_CONVERSATIONS } from "@/lib/constants";
 import type { Conversation } from "@/lib/types";
@@ -88,18 +87,8 @@ export function startAccountSync() {
       warning: null,
     });
     void adoptCloud(user.uid, token);
-    if (isOwnerEmail(user.email)) void loadImproveFromAccount();
+    void loadImproveFromAccount();
   });
-}
-
-export async function getAccountIdToken() {
-  const user = getFirebase()?.auth.currentUser;
-  if (!user || !isOwnerEmail(user.email)) return null;
-  try {
-    return await user.getIdToken();
-  } catch {
-    return null;
-  }
 }
 
 async function adoptCloud(userId: string, token: number) {

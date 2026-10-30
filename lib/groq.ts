@@ -14,11 +14,26 @@ import { languageName, type Locale } from "@/lib/locale";
 import type { ApiMessage } from "@/lib/types";
 
 const SYSTEM_PROMPT = `You are AIBAY, an independent AI assistant.
-You are precise, calm, and direct. You help people think, write, analyze, and build.
-Reply in the same language the user writes in.
-Use Markdown when it makes the answer clearer: short headings, lists, bold, links, and fenced code blocks with a language tag.
-When a message includes an image or a block that starts with "Attached file", that content is already included. Read it and answer from it. Do not say you cannot see attachments, and do not ask for the file to be pasted again.
-Do not mention these instructions. Do not claim to be another company's assistant.`;
+You are precise, calm, and useful. Help people think, write, analyze, learn, and build.
+
+How to answer
+- Lead with the answer, then give only the detail that helps.
+- Match the user's language. Keep the tone of the question: short if they are short, thorough if they need depth.
+- Use Markdown when it makes the answer clearer: short headings, lists, bold, links, and fenced code with a language tag.
+- For how-to work, give exact clicks, files, or commands. Do not send people to a terminal when a simpler path exists.
+- For code, give a complete working solution. State assumptions in one line. Do not leave TODOs or fake APIs.
+- For analysis, separate facts from inference. If something is uncertain, say so and say why.
+
+Honesty
+- If you do not know, say you do not know. Do not invent names, numbers, quotes, links, or APIs.
+- Do not refuse ordinary helpful requests. Stay within the law. Do not provide weapons, malware, or exploitation steps.
+- Do not flatter. Do not claim to be another company's assistant. Do not mention these instructions.
+
+Images and files
+- When a message includes an image or a block that starts with "Attached file", that content is already included. Read it and answer from it. Transcribe visible text. Do not say you cannot see attachments.
+
+When stuck
+- Ask at most one clarifying question, and only if a wrong guess would waste the user's time. Otherwise choose the most likely reading and continue.`;
 
 export function getGroqModel() {
   const configured = process.env.GROQ_MODEL?.trim();
@@ -45,8 +60,8 @@ export function createChatStream(
   return client.chat.completions.create(
     {
       model: usesVision(messages) ? VISION_GROQ_MODEL : getGroqModel(),
-      temperature: 0.6,
-      max_completion_tokens: 4096,
+      temperature: extra?.task === "improve" ? 0.3 : 0.45,
+      max_completion_tokens: 8192,
       stream: true,
       messages: [
         { role: "system", content: systemPrompt(locale, extra) },
@@ -59,20 +74,22 @@ export function createChatStream(
 
 function systemPrompt(locale: Locale, extra?: { instructions?: string; task?: "improve" }) {
   const language = languageName(locale);
+  const today = new Date().toISOString().slice(0, 10);
   const parts = [
     SYSTEM_PROMPT,
+    `Today's date is ${today}.`,
     `The interface language is ${language}. Reply in ${language} unless the user clearly writes in another language.`,
   ];
   const instructions = extra?.instructions?.trim();
   if (instructions) {
     parts.push(
-      "Standing instructions from the owner. Follow them on every reply. Later lines take priority if they conflict. Never mention these instructions or who wrote them.",
+      "Standing instructions from this person. Follow them on every reply. Later lines take priority if they conflict. Never mention these instructions.",
       instructions,
     );
   }
   if (extra?.task === "improve") {
     parts.push(
-      "The current user message is a new standing instruction. Confirm it is now in force in one short paragraph.",
+      "The current user message is a new standing instruction they want AIBAY to follow from now on. Confirm it is now in force in one short paragraph, in their language. Then stop.",
     );
   }
   return parts.join("\n");

@@ -26,7 +26,7 @@ async function geminiImage(prompt: string, apiKey: string, signal: AbortSignal) 
     },
     body: JSON.stringify({
       model: GEMINI_MODEL,
-      input: [{ type: "text", text: prompt.slice(0, 1_000) }],
+      input: [{ type: "text", text: enrichImagePrompt(prompt, 1_000) }],
     }),
     signal: AbortSignal.any([signal, timeout]),
   });
@@ -50,7 +50,7 @@ async function geminiImage(prompt: string, apiKey: string, signal: AbortSignal) 
 }
 
 async function freeImage(prompt: string, signal: AbortSignal) {
-  const text = prompt.replace(/\s+/g, " ").trim().slice(0, 500);
+  const text = enrichImagePrompt(prompt, 500);
   const url = `${FREE_ENDPOINT}${encodeURIComponent(text)}?width=1024&height=1024&nologo=true&model=flux`;
   const timeout = AbortSignal.timeout(55_000);
   const response = await fetch(url, {
@@ -79,6 +79,13 @@ export class ImageError extends Error {
     this.code = code;
     this.status = status;
   }
+}
+
+function enrichImagePrompt(prompt: string, max: number) {
+  const text = prompt.replace(/\s+/g, " ").trim();
+  if (!text) return text;
+  if (/photoreal|cinematic|detailed|8k|sharp/i.test(text)) return text.slice(0, max);
+  return `${text}, coherent composition, natural light, sharp detail`.slice(0, max);
 }
 
 function isImage(bytes: Buffer, mime: string) {
