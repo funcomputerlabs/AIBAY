@@ -7,6 +7,14 @@ const LOCALE_KEY = "aibay.locale.v1";
 
 const en = {
   newChat: "New chat",
+  call: "Live call",
+  hangUp: "Hang up",
+  listening: "Listening",
+  thinking: "Thinking",
+  speaking: "Speaking",
+  callConnecting: "Connecting",
+  callHello: "I'm here. Go ahead.",
+  callDenied: "AIBAY needs the microphone for a live call.",
   recent: "Recent chats",
   emptyChats: "No conversations yet.",
   settings: "Settings",
@@ -120,6 +128,14 @@ type Copy = typeof en;
 
 const es: Copy = {
   newChat: "Nuevo chat",
+  call: "Llamada en vivo",
+  hangUp: "Colgar",
+  listening: "Te escucho",
+  thinking: "Pensando",
+  speaking: "Hablando",
+  callConnecting: "Conectando",
+  callHello: "Estoy aquí. Adelante.",
+  callDenied: "AIBAY necesita el micrófono para la llamada.",
   recent: "Chats recientes",
   emptyChats: "Todavía no hay conversaciones.",
   settings: "Ajustes",
@@ -231,6 +247,14 @@ const es: Copy = {
 
 const fr: Copy = {
   newChat: "Nouvelle discussion",
+  call: "Appel en direct",
+  hangUp: "Raccrocher",
+  listening: "J’écoute",
+  thinking: "Réflexion",
+  speaking: "Je parle",
+  callConnecting: "Connexion",
+  callHello: "Je suis là. Allez-y.",
+  callDenied: "AIBAY a besoin du micro pour l’appel.",
   recent: "Discussions récentes",
   emptyChats: "Aucune conversation pour le moment.",
   settings: "Réglages",
@@ -342,6 +366,14 @@ const fr: Copy = {
 
 const pt: Copy = {
   newChat: "Novo chat",
+  call: "Chamada ao vivo",
+  hangUp: "Desligar",
+  listening: "Estou a ouvir",
+  thinking: "A pensar",
+  speaking: "A falar",
+  callConnecting: "A ligar",
+  callHello: "Estou aqui. Avance.",
+  callDenied: "A AIBAY precisa do microfone para a chamada.",
   recent: "Chats recentes",
   emptyChats: "Ainda não há conversas.",
   settings: "Definições",
@@ -453,6 +485,14 @@ const pt: Copy = {
 
 const de: Copy = {
   newChat: "Neuer Chat",
+  call: "Live-Anruf",
+  hangUp: "Auflegen",
+  listening: "Ich höre zu",
+  thinking: "Denke nach",
+  speaking: "Ich spreche",
+  callConnecting: "Verbinden",
+  callHello: "Ich bin da. Bitte.",
+  callDenied: "AIBAY braucht das Mikrofon für den Anruf.",
   recent: "Letzte Chats",
   emptyChats: "Noch keine Unterhaltungen.",
   settings: "Einstellungen",
@@ -564,6 +604,14 @@ const de: Copy = {
 
 const it: Copy = {
   newChat: "Nuova chat",
+  call: "Chiamata in diretta",
+  hangUp: "Riaggancia",
+  listening: "Ti ascolto",
+  thinking: "Sto pensando",
+  speaking: "Parlo",
+  callConnecting: "Connessione",
+  callHello: "Sono qui. Avanti.",
+  callDenied: "AIBAY ha bisogno del microfono per la chiamata.",
   recent: "Chat recenti",
   emptyChats: "Ancora nessuna conversazione.",
   settings: "Impostazioni",

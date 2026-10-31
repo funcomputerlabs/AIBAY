@@ -59,7 +59,12 @@ export async function POST(request: Request) {
   if (fromOwner) rememberGlobalImprove(fromOwner);
   const extra = {
     instructions: fromOwner || (await getGlobalImprove()),
-    task: owner && (payload as { task?: unknown }).task === "improve" ? ("improve" as const) : undefined,
+    task:
+      owner && (payload as { task?: unknown }).task === "improve"
+        ? ("improve" as const)
+        : (payload as { task?: unknown }).task === "voice"
+          ? ("voice" as const)
+          : undefined,
     page: readPageContext((payload as { page?: unknown }).page),
   };
 

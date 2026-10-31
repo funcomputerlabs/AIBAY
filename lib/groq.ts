@@ -48,7 +48,7 @@ export function createChatStream(
   messages: ApiMessage[],
   signal: AbortSignal,
   locale: Locale,
-  extra?: { instructions?: string; task?: "improve"; page?: PageContext },
+  extra?: { instructions?: string; task?: "improve" | "voice"; page?: PageContext },
 ) {
   const apiKey = process.env.GROQ_API_KEY?.trim();
   if (!apiKey) {
@@ -72,7 +72,7 @@ export function createChatStream(
   );
 }
 
-function systemPrompt(locale: Locale, extra?: { instructions?: string; task?: "improve"; page?: PageContext }) {
+function systemPrompt(locale: Locale, extra?: { instructions?: string; task?: "improve" | "voice"; page?: PageContext }) {
   const language = languageName(locale);
   const today = new Date().toISOString().slice(0, 10);
   const parts = [
@@ -102,6 +102,11 @@ function systemPrompt(locale: Locale, extra?: { instructions?: string; task?: "i
             })
             .join("\n")}`
         : "No labeled controls were found.",
+    );
+  }
+  if (extra?.task === "voice") {
+    parts.push(
+      "You are on a live voice call. Speak the way a person talks: short sentences, no markdown, no lists, no code. Keep replies under 60 words unless they ask for more. Ask at most one question.",
     );
   }
   if (extra?.task === "improve") {

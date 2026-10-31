@@ -21,6 +21,7 @@ type SidebarProps = {
   onAccount: () => void;
   galleryOpen: boolean;
   onGallery: () => void;
+  onCall: () => void;
 };
 
 export function Sidebar({
@@ -36,6 +37,7 @@ export function Sidebar({
   onAccount,
   galleryOpen,
   onGallery,
+  onCall,
 }: SidebarProps) {
   const { locale, setLocale, t } = useI18n();
   const recent = [...conversations].sort((a, b) => b.updatedAt - a.updatedAt);
@@ -84,6 +86,14 @@ export function Sidebar({
           )}
         >
           {t("gallery")}
+        </button>
+
+        <button
+          type="button"
+          onClick={onCall}
+          className="mx-3 mt-2 flex h-10 items-center rounded-xl px-3 text-sm text-zinc-300 transition hover:bg-white/[0.04] hover:text-white"
+        >
+          {t("call")}
         </button>
 
         <div className="mt-6 flex min-h-0 flex-1 flex-col">

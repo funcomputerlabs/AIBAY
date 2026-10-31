@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { About } from "@/components/About";
+import { Call } from "@/components/Call";
 import { AccountDialog, useAccount } from "@/components/Account";
 import { ChatInput } from "@/components/ChatInput";
 import { ChatMessage } from "@/components/ChatMessage";
@@ -54,6 +55,7 @@ export function Chat() {
   const [aboutOpen, setAboutOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
+  const [callOpen, setCallOpen] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
   const requestRef = useRef(0);
@@ -90,6 +92,7 @@ export function Chat() {
     conversationId: string,
     history: Parameters<typeof toApiMessages>[0],
     assistantId: string,
+    options?: { voice?: boolean },
   ) {
     const requestId = ++requestRef.current;
     abortRef.current?.abort();
@@ -114,6 +117,7 @@ export function Chat() {
           messages: toApiMessages(history.slice(-MAX_MESSAGES)),
           ...(token && getImproveText() ? { improve: getImproveText() } : {}),
           ...(token && last?.purpose === "improve" ? { task: "improve" } : {}),
+          ...(options?.voice ? { task: "voice" } : {}),
         }),
         signal: controller.signal,
       });
@@ -150,17 +154,18 @@ export function Chat() {
           setError("emptyResponse");
           setStatus("error");
         }
-        return;
+        return "";
       }
 
       if (!superseded()) setStatus("idle");
+      return accumulated;
     } catch (caught) {
       if (!accumulated.trim()) dropAssistant(conversationId, assistantId);
-      if (superseded()) return;
+      if (superseded()) return "";
 
       if (controller.signal.aborted) {
         setStatus("idle");
-        return;
+        return "";
       }
 
       const message =
@@ -169,6 +174,7 @@ export function Chat() {
           : "network";
       setError(message);
       setStatus("error");
+      return "";
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
     }
@@ -450,6 +456,11 @@ export function Chat() {
           setSidebarOpen(false);
           setGalleryOpen((open) => !open);
         }}
+        onCall={() => {
+          setSidebarOpen(false);
+          setGalleryOpen(false);
+          setCallOpen(true);
+        }}
       />
 
       <section className="flex min-w-0 flex-1 flex-col">
@@ -551,6 +562,20 @@ export function Chat() {
         )}
       </section>
 
+      {callOpen ? (
+        <Call
+          locale={locale}
+          onClose={() => {
+            stop();
+            setCallOpen(false);
+          }}
+          onUtterance={async (text) => {
+            stickRef.current = true;
+            const exchange = startExchange(text);
+            return streamReply(exchange.conversationId, exchange.history, exchange.assistantId, { voice: true });
+          }}
+        />
+      ) : null}
       {settingsOpen ? <Settings onClose={() => setSettingsOpen(false)} onClear={clearAll} /> : null}
       {aboutOpen ? <About onClose={() => setAboutOpen(false)} /> : null}
       {accountOpen ? <AccountDialog onClose={() => setAccountOpen(false)} /> : null}
