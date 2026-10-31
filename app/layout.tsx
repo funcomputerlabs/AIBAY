@@ -55,6 +55,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <meta name="google-site-verification" content="S_HATGXtzjbruRLHY5HTeQit7v-El4hJkaVolmRgHLs" />
+      </head>
       <body className="min-h-dvh bg-black font-sans text-[#f4f6fb]">{children}</body>
     </html>
   );
