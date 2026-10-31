@@ -44,6 +44,9 @@ export const metadata: Metadata = {
     description: "A new generation AI platform.",
     images: ["/aibay-logo.png"],
   },
+  verification: {
+    google: "S_HATGXtzjbruRLHY5HTeQit7v-El4hJkaVolmRgHLs",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
