@@ -2,18 +2,95 @@ import "server-only";
 
 const GEMINI_MODEL = "gemini-3.1-flash-image";
 const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/interactions";
-const FREE_ENDPOINT = "https://image.pollinations.ai/prompt/";
+const IMAGE_CREATE = "https://api.magichour.ai/v1/ai-image-generator";
+const IMAGE_STATUS = "https://api.magichour.ai/v1/image-projects/";
 
-export async function generateImage(prompt: string, signal: AbortSignal) {
-  const apiKey = process.env.GEMINI_API_KEY?.trim();
-  if (apiKey) {
+export async function generateImage(prompt: string, jobId: string | undefined, signal: AbortSignal) {
+  const hourKey = process.env.MAGIC_HOUR_API_KEY?.trim();
+  const geminiKey = process.env.GEMINI_API_KEY?.trim();
+
+  if (hourKey) {
     try {
-      return await geminiImage(prompt, apiKey, signal);
+      return await magicHourImage(prompt, hourKey, jobId, signal);
     } catch (error) {
+      if (jobId) throw error;
       if (!(error instanceof ImageError) || error.code === "unavailable") throw error;
     }
   }
-  return freeImage(prompt, signal);
+
+  if (geminiKey) return geminiImage(prompt, geminiKey, signal);
+  throw new ImageError("unavailable", 503);
+}
+
+async function magicHourImage(prompt: string, apiKey: string, jobId: string | undefined, signal: AbortSignal) {
+  const id = jobId || (await startMagicHour(prompt, apiKey, signal));
+  const url = await waitForImage(id, apiKey, signal);
+  if (!url) return { pending: true as const, jobId: id };
+  return downloadImage(url, signal);
+}
+
+async function startMagicHour(prompt: string, apiKey: string, signal: AbortSignal) {
+  const body = {
+    name: "AIBAY",
+    image_count: 1,
+    model: "default",
+    aspect_ratio: "1:1",
+    resolution: "1k",
+    style: { prompt: enrichImagePrompt(prompt, 1_000), tool: "general" },
+  };
+  let response = await postMagicHour(apiKey, body, signal);
+  if (response.status === 402) {
+    response = await postMagicHour(apiKey, { ...body, resolution: "640px" }, signal);
+  }
+  if (response.status === 429) throw new ImageError("rate", 429);
+  if (response.status === 401 || response.status === 403) throw new ImageError("unavailable", 503);
+  if (response.status === 402) throw new ImageError("failed", 402);
+  if (!response.ok) {
+    console.error("AIBAY image request failed", { status: response.status });
+    throw new ImageError("failed", response.status >= 500 ? 502 : 400);
+  }
+  const payload = (await response.json()) as { id?: string };
+  if (!payload.id) throw new ImageError("failed", 502);
+  return payload.id;
+}
+
+function postMagicHour(apiKey: string, body: object, signal: AbortSignal) {
+  return fetch(IMAGE_CREATE, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(body),
+    signal,
+  });
+}
+
+async function waitForImage(id: string, apiKey: string, signal: AbortSignal) {
+  const deadline = Date.now() + 45_000;
+  while (Date.now() < deadline) {
+    if (signal.aborted) throw new ImageError("failed", 499);
+    const response = await fetch(`${IMAGE_STATUS}${encodeURIComponent(id)}`, {
+      headers: { Authorization: `Bearer ${apiKey}`, Accept: "application/json" },
+      signal,
+    });
+    if (!response.ok) throw new ImageError("failed", 502);
+    const payload = (await response.json()) as { status?: string; downloads?: Array<{ url?: string }> };
+    if (payload.status === "error" || payload.status === "canceled") throw new ImageError("failed", 502);
+    const url = payload.downloads?.find((item) => item.url?.startsWith("https://"))?.url;
+    if (payload.status === "complete") {
+      if (!url) throw new ImageError("failed", 502);
+      return url;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 3_000));
+  }
+  return null;
+}
+
+async function downloadImage(url: string, signal: AbortSignal) {
+  const response = await fetch(url, { signal: AbortSignal.any([signal, AbortSignal.timeout(20_000)]) });
+  if (!response.ok) throw new ImageError("failed", 502);
+  const bytes = Buffer.from(await response.arrayBuffer());
+  const mime = (response.headers.get("content-type") ?? "").split(";")[0].trim() || guessMime(bytes);
+  if (!isImage(bytes, mime)) throw new ImageError("failed", 502);
+  return { dataUrl: `data:${mime};base64,${bytes.toString("base64")}`, caption: "" };
 }
 
 async function geminiImage(prompt: string, apiKey: string, signal: AbortSignal) {
@@ -49,27 +126,6 @@ async function geminiImage(prompt: string, apiKey: string, signal: AbortSignal) 
   return { dataUrl: `data:${mime};base64,${data}`, caption: "" };
 }
 
-async function freeImage(prompt: string, signal: AbortSignal) {
-  const text = enrichImagePrompt(prompt, 500);
-  const url = `${FREE_ENDPOINT}${encodeURIComponent(text)}?width=1024&height=1024&nologo=true&model=flux`;
-  const timeout = AbortSignal.timeout(55_000);
-  const response = await fetch(url, {
-    headers: { Accept: "image/jpeg,image/png,image/webp" },
-    signal: AbortSignal.any([signal, timeout]),
-  });
-
-  if (response.status === 429) throw new ImageError("rate", 429);
-  if (!response.ok) {
-    console.error("AIBAY image request failed", { status: response.status });
-    throw new ImageError("failed", response.status >= 500 ? 502 : 400);
-  }
-
-  const mime = (response.headers.get("content-type") ?? "").split(";")[0].trim();
-  const bytes = Buffer.from(await response.arrayBuffer());
-  if (!isImage(bytes, mime)) throw new ImageError("failed", 502);
-  return { dataUrl: `data:${mime};base64,${bytes.toString("base64")}`, caption: "" };
-}
-
 export class ImageError extends Error {
   status: number;
   code: "unavailable" | "failed" | "rate";
@@ -86,6 +142,13 @@ function enrichImagePrompt(prompt: string, max: number) {
   if (!text) return text;
   if (/photoreal|cinematic|detailed|8k|sharp/i.test(text)) return text.slice(0, max);
   return `${text}, coherent composition, natural light, sharp detail`.slice(0, max);
+}
+
+function guessMime(bytes: Buffer) {
+  if (bytes[0] === 0xff && bytes[1] === 0xd8) return "image/jpeg";
+  if (bytes[0] === 0x89 && bytes[1] === 0x50) return "image/png";
+  if (bytes.subarray(0, 4).toString("ascii") === "RIFF") return "image/webp";
+  return "application/octet-stream";
 }
 
 function isImage(bytes: Buffer, mime: string) {

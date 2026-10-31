@@ -12,18 +12,17 @@ export async function POST(request: Request) {
     return Response.json({ error: "imageFailed" }, { status: 400 });
   }
 
-  const prompt =
-    payload && typeof payload === "object" && typeof (payload as { prompt?: unknown }).prompt === "string"
-      ? (payload as { prompt: string }).prompt.replace(/\u0000/g, "").trim()
-      : "";
+  const body = payload && typeof payload === "object" ? (payload as { prompt?: unknown; jobId?: unknown }) : {};
+  const prompt = typeof body.prompt === "string" ? body.prompt.replace(/\u0000/g, "").trim() : "";
+  const jobId = typeof body.jobId === "string" ? body.jobId.slice(0, 120) : undefined;
 
-  if (!prompt) return Response.json({ error: "imageEmpty" }, { status: 400 });
+  if (!prompt && !jobId) return Response.json({ error: "imageEmpty" }, { status: 400 });
   if (prompt.length > 1_000) {
     return Response.json({ error: "imageFailed" }, { status: 400 });
   }
 
   try {
-    const image = await generateImage(prompt, request.signal);
+    const image = await generateImage(prompt, jobId, request.signal);
     return Response.json(image, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (request.signal.aborted) return new Response(null, { status: 499 });

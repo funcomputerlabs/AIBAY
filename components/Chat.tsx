@@ -226,16 +226,32 @@ export function Chat() {
     setError(null);
 
     try {
-      const response = await fetch("/api/image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
-        signal: controller.signal,
-      });
-      const data = (await response.json().catch(() => null)) as { error?: unknown; dataUrl?: unknown; caption?: unknown } | null;
-      if (!response.ok) {
-        const message = data && typeof data.error === "string" ? data.error : "imageFailed";
-        throw new Error(message);
+      let jobId = "";
+      let data: { error?: unknown; dataUrl?: unknown; caption?: unknown; pending?: unknown; jobId?: unknown } | null = null;
+      while (requestRef.current === requestId) {
+        const response = await fetch("/api/image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt, jobId: jobId || undefined }),
+          signal: controller.signal,
+        });
+        data = (await response.json().catch(() => null)) as {
+          error?: unknown;
+          dataUrl?: unknown;
+          caption?: unknown;
+          pending?: unknown;
+          jobId?: unknown;
+        } | null;
+        if (!response.ok) {
+          const message = data && typeof data.error === "string" ? data.error : "imageFailed";
+          throw new Error(message);
+        }
+        if (data?.pending) {
+          if (typeof data.jobId !== "string" || !data.jobId) throw new Error("imageFailed");
+          jobId = data.jobId;
+          continue;
+        }
+        break;
       }
       if (!data || typeof data.dataUrl !== "string") throw new Error("imageFailed");
       let dataUrl = data.dataUrl;
