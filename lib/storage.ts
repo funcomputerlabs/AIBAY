@@ -120,6 +120,18 @@ export function activateConversation(id: string | null) {
   commit({ ...current, activeId: id });
 }
 
+export function renameConversation(id: string, title: string) {
+  const next = title.replace(/\u0000/g, "").replace(/\s+/g, " ").trim().slice(0, 80);
+  if (!next) return;
+  const current = getSnapshot();
+  commit({
+    ...current,
+    conversations: current.conversations.map((conversation) =>
+      conversation.id === id ? { ...conversation, title: next, updatedAt: Date.now() } : conversation,
+    ),
+  });
+}
+
 export function removeConversation(id: string) {
   const current = getSnapshot();
   commit({

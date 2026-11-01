@@ -15,6 +15,7 @@ import { MAX_ATTACHMENTS, MAX_MESSAGES } from "@/lib/constants";
 import { compressDataUrl, readAttachment } from "@/lib/files";
 import { seedGallery } from "@/lib/gallery";
 import { useI18n } from "@/lib/i18n";
+import { conversationMarkdown, downloadText } from "@/lib/export";
 import { toApiMessages } from "@/lib/messages";
 import { getAccountIdToken, startAccountSync } from "@/lib/account";
 import { appendImprove, getImproveText } from "@/lib/improve";
@@ -30,9 +31,33 @@ import {
   getSnapshot,
   patchAssistant,
   removeConversation,
+  renameConversation,
   startExchange,
   subscribe,
 } from "@/lib/storage";
+
+const DRAFT_KEY = "aibay.draft.v1";
+
+function draftsMap(): Record<string, string> {
+  try {
+    const parsed = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || "{}") as unknown;
+    if (!parsed || typeof parsed !== "object") return {};
+    return parsed as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
+
+function saveDraft(id: string, value: string) {
+  try {
+    const map = draftsMap();
+    if (value) map[id] = value;
+    else delete map[id];
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify(map));
+  } catch {
+    /* quota */
+  }
+}
 
 export function Chat() {
   const { conversations, activeId } = useSyncExternalStore(
@@ -56,11 +81,15 @@ export function Chat() {
   const [accountOpen, setAccountOpen] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
+  const [online, setOnline] = useState(true);
+  const [away, setAway] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
   const requestRef = useRef(0);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const stickRef = useRef(true);
+  const skipDraftWrite = useRef(false);
+  const newChatRef = useRef<() => void>(() => undefined);
 
   const active = conversations.find((conversation) => conversation.id === activeId) ?? null;
   const streaming = status === "streaming";
@@ -76,6 +105,34 @@ export function Chat() {
   useEffect(() => {
     document.documentElement.lang = locale;
   }, [locale]);
+
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine);
+    update();
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    return () => {
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
+    };
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      skipDraftWrite.current = true;
+      const stored = draftsMap()[getSnapshot().activeId ?? "_new"];
+      setDraft(typeof stored === "string" ? stored : "");
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (skipDraftWrite.current) {
+      skipDraftWrite.current = false;
+      return;
+    }
+    saveDraft(activeId ?? "_new", draft);
+  }, [draft, activeId]);
 
   useEffect(() => {
     if (!stickRef.current) return;
@@ -387,9 +444,16 @@ export function Chat() {
     void streamReply(active.id, exchange.history, exchange.assistantId);
   }
 
+  function loadDraft(id: string | null) {
+    skipDraftWrite.current = true;
+    const stored = draftsMap()[id ?? "_new"];
+    setDraft(typeof stored === "string" ? stored : "");
+  }
+
   function selectConversation(id: string) {
     stop();
     activateConversation(id);
+    loadDraft(id);
     setError(null);
     setSidebarOpen(false);
     setGalleryOpen(false);
@@ -399,14 +463,15 @@ export function Chat() {
   function newChat() {
     stop();
     activateConversation(null);
+    loadDraft(null);
     setError(null);
-    setDraft("");
     setAttachments([]);
     setAttachmentError(null);
     setSidebarOpen(false);
     setGalleryOpen(false);
     setStatus("idle");
   }
+  newChatRef.current = newChat;
 
   function deleteConversation(id: string) {
     if (activeId === id) {
@@ -427,6 +492,38 @@ export function Chat() {
     setStatus("idle");
   }
 
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setSidebarOpen(false);
+        setSettingsOpen(false);
+        setAboutOpen(false);
+        setAccountOpen(false);
+        return;
+      }
+      const typing =
+        event.target instanceof HTMLElement &&
+        (event.target.tagName === "INPUT" ||
+          event.target.tagName === "TEXTAREA" ||
+          event.target.tagName === "SELECT" ||
+          event.target.isContentEditable);
+      const meta = event.metaKey || event.ctrlKey;
+      if (meta && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setSidebarOpen(true);
+        window.setTimeout(() => document.getElementById("aibay-search")?.focus(), 0);
+        return;
+      }
+      if (typing) return;
+      if (meta && event.key.toLowerCase() === "n") {
+        event.preventDefault();
+        newChatRef.current();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const showWelcome = !active || active.messages.length === 0;
 
   return (
@@ -438,6 +535,7 @@ export function Chat() {
         onClose={() => setSidebarOpen(false)}
         onNew={newChat}
         onSelect={selectConversation}
+        onRename={renameConversation}
         onDelete={deleteConversation}
         onSettings={() => {
           setSidebarOpen(false);
@@ -463,13 +561,13 @@ export function Chat() {
         }}
       />
 
-      <section className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-white/[0.06] px-3 md:hidden">
+      <section className="relative flex min-w-0 flex-1 flex-col">
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-white/[0.06] px-3 md:h-12 md:px-4">
           <button
             type="button"
             aria-label={t("openMenu")}
             onClick={() => setSidebarOpen(true)}
-            className="flex h-10 w-10 items-center justify-center rounded-lg text-zinc-300 hover:bg-white/[0.05]"
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-zinc-300 hover:bg-white/[0.05] md:hidden"
           >
             <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
               <path
@@ -481,15 +579,49 @@ export function Chat() {
               />
             </svg>
           </button>
-          <Logo className="w-20" />
+          <Logo className="w-20 md:hidden" />
+          <p className="min-w-0 flex-1 truncate text-sm text-zinc-300">
+            {galleryOpen ? t("gallery") : active?.title || t("newChat")}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setGalleryOpen(false);
+              setCallOpen(true);
+            }}
+            className="h-9 rounded-full px-3 text-xs text-zinc-300 transition hover:bg-white/[0.05] hover:text-white"
+          >
+            {t("call")}
+          </button>
+          {active && !galleryOpen ? (
+            <button
+              type="button"
+              onClick={() =>
+                downloadText(
+                  `${active.title.replace(/[<>:"/\\|?*]+/g, "").slice(0, 40) || "aibay"}.md`,
+                  conversationMarkdown(active),
+                )
+              }
+              className="hidden h-9 rounded-full px-3 text-xs text-zinc-300 transition hover:bg-white/[0.05] hover:text-white sm:block"
+            >
+              {t("exportChat")}
+            </button>
+          ) : null}
         </header>
+
+        {online ? null : (
+          <p className="border-b border-amber-400/20 bg-amber-500/10 px-4 py-2 text-center text-xs text-amber-100">
+            {t("offline")}
+          </p>
+        )}
 
         <div
           ref={scrollerRef}
           onScroll={(event) => {
             const element = event.currentTarget;
-            stickRef.current =
-              element.scrollHeight - element.scrollTop - element.clientHeight < 80;
+            const nearBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 80;
+            stickRef.current = nearBottom;
+            setAway(!nearBottom && element.scrollHeight > element.clientHeight + 120);
           }}
           className="aibay-scroll min-h-0 flex-1 overflow-y-auto"
         >
@@ -518,6 +650,22 @@ export function Chat() {
             </div>
           )}
         </div>
+
+        {away && !galleryOpen && !showWelcome ? (
+          <button
+            type="button"
+            onClick={() => {
+              const scroller = scrollerRef.current;
+              if (!scroller) return;
+              stickRef.current = true;
+              scroller.scrollTo({ top: scroller.scrollHeight, behavior: "smooth" });
+              setAway(false);
+            }}
+            className="absolute right-4 bottom-28 z-10 h-10 rounded-full border border-white/10 bg-black/90 px-4 text-xs text-zinc-200 shadow-lg backdrop-blur"
+          >
+            {t("jumpLatest")}
+          </button>
+        ) : null}
 
         {galleryOpen ? null : (
         <div className="shrink-0">
@@ -576,7 +724,9 @@ export function Chat() {
           }}
         />
       ) : null}
-      {settingsOpen ? <Settings onClose={() => setSettingsOpen(false)} onClear={clearAll} /> : null}
+      {settingsOpen ? (
+        <Settings conversations={conversations} onClose={() => setSettingsOpen(false)} onClear={clearAll} />
+      ) : null}
       {aboutOpen ? <About onClose={() => setAboutOpen(false)} /> : null}
       {accountOpen ? <AccountDialog onClose={() => setAccountOpen(false)} /> : null}
     </div>

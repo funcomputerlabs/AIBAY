@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -24,12 +24,14 @@ export const metadata: Metadata = {
     default: "AIBAY — AI for everyone",
     template: "%s — AIBAY",
   },
-  description: "A new generation AI platform.",
+  description: "AIBAY is an independent AI for chat, images, video, music, and live voice calls.",
   applicationName: "AIBAY",
+  keywords: ["AIBAY", "AI", "chat", "image generation", "video", "music", "voice"],
+  robots: { index: true, follow: true },
   openGraph: {
     type: "website",
     title: "AIBAY — AI for everyone",
-    description: "A new generation AI platform.",
+    description: "AIBAY is an independent AI for chat, images, video, music, and live voice calls.",
     siteName: "AIBAY",
     images: [
       {
@@ -41,12 +43,17 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "AIBAY — AI for everyone",
-    description: "A new generation AI platform.",
+    description: "AIBAY is an independent AI for chat, images, video, music, and live voice calls.",
     images: ["/aibay-logo.png"],
   },
   verification: {
     google: "S_HATGXtzjbruRLHY5HTeQit7v-El4hJkaVolmRgHLs",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#000000",
+  colorScheme: "dark",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

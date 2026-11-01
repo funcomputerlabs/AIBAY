@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { AccountButton } from "@/components/Account";
 import { Logo } from "@/components/Logo";
@@ -15,6 +16,7 @@ type SidebarProps = {
   onClose: () => void;
   onNew: () => void;
   onSelect: (id: string) => void;
+  onRename: (id: string, title: string) => void;
   onDelete: (id: string) => void;
   onSettings: () => void;
   onAbout: () => void;
@@ -31,6 +33,7 @@ export function Sidebar({
   onClose,
   onNew,
   onSelect,
+  onRename,
   onDelete,
   onSettings,
   onAbout,
@@ -40,7 +43,19 @@ export function Sidebar({
   onCall,
 }: SidebarProps) {
   const { locale, setLocale, t } = useI18n();
-  const recent = [...conversations].sort((a, b) => b.updatedAt - a.updatedAt);
+  const [query, setQuery] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const recent = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return [...conversations]
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .filter((conversation) => {
+        if (!needle) return true;
+        if (conversation.title.toLowerCase().includes(needle)) return true;
+        return conversation.messages.some((message) => message.content.toLowerCase().includes(needle));
+      });
+  }, [conversations, query]);
 
   return (
     <>
@@ -100,18 +115,65 @@ export function Sidebar({
           <p className="px-4 text-[11px] font-medium tracking-[0.16em] text-zinc-500 uppercase">
             {t("recent")}
           </p>
+          <div className="px-3 pt-2">
+            <input
+              id="aibay-search"
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={t("searchChats")}
+              aria-label={t("searchChats")}
+              className="h-9 w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-[#49ebff]/40"
+            />
+          </div>
           <div className="aibay-scroll mt-2 flex-1 overflow-y-auto px-2 pb-3">
             {recent.length === 0 ? (
-              <p className="px-2 py-3 text-sm text-zinc-600">{t("emptyChats")}</p>
+              <p className="px-2 py-3 text-sm text-zinc-600">
+                {conversations.length === 0 ? t("emptyChats") : t("noResults")}
+              </p>
             ) : (
               <ul className="space-y-0.5">
                 {recent.map((conversation) => {
                   const active = conversation.id === activeId;
+                  const editing = editingId === conversation.id;
                   return (
                     <li key={conversation.id} className="group flex items-center gap-1">
+                      {editing ? (
+                        <form
+                          className="min-w-0 flex-1 px-1"
+                          onSubmit={(event) => {
+                            event.preventDefault();
+                            onRename(conversation.id, editTitle);
+                            setEditingId(null);
+                          }}
+                        >
+                          <input
+                            autoFocus
+                            value={editTitle}
+                            aria-label={t("rename")}
+                            onChange={(event) => setEditTitle(event.target.value)}
+                            onBlur={() => {
+                              onRename(conversation.id, editTitle);
+                              setEditingId(null);
+                            }}
+                            onKeyDown={(event) => {
+                              if (event.key === "Escape") {
+                                event.preventDefault();
+                                setEditingId(null);
+                              }
+                            }}
+                            className="h-9 w-full rounded-lg border border-[#49ebff]/40 bg-black px-2 text-sm text-white outline-none"
+                          />
+                        </form>
+                      ) : (
                       <button
                         type="button"
                         onClick={() => onSelect(conversation.id)}
+                        onDoubleClick={() => {
+                          setEditingId(conversation.id);
+                          setEditTitle(conversation.title);
+                        }}
+                        title={t("rename")}
                         className={cn(
                           "flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-2 text-left text-sm",
                           active
@@ -133,6 +195,7 @@ export function Sidebar({
                           </span>
                         </span>
                       </button>
+                      )}
                       <button
                         type="button"
                         aria-label={`${t("delete")} ${conversation.title}`}

@@ -3,14 +3,17 @@
 import { useEffect, useState } from "react";
 import { Dialog } from "@/components/Dialog";
 import { useAccount } from "@/components/Account";
+import { allConversationsMarkdown, downloadText } from "@/lib/export";
 import { useI18n } from "@/lib/i18n";
+import type { Conversation } from "@/lib/types";
 
 type SettingsProps = {
+  conversations: Conversation[];
   onClose: () => void;
   onClear: () => void;
 };
 
-export function Settings({ onClose, onClear }: SettingsProps) {
+export function Settings({ conversations, onClose, onClear }: SettingsProps) {
   const [armed, setArmed] = useState(false);
   const [model, setModel] = useState<string | null>(null);
   const [configured, setConfigured] = useState<boolean | null>(null);
@@ -55,6 +58,15 @@ export function Settings({ onClose, onClear }: SettingsProps) {
           </div>
         </dl>
         <p className="text-xs text-zinc-500">{t("shortcut")}</p>
+        {conversations.length ? (
+          <button
+            type="button"
+            onClick={() => downloadText("aibay-chats.md", allConversationsMarkdown(conversations))}
+            className="h-10 w-full rounded-full border border-white/10 text-sm text-zinc-200 transition hover:bg-white/[0.05]"
+          >
+            {t("exportAll")}
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={() => {

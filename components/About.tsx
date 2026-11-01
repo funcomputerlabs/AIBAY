@@ -14,6 +14,7 @@ export function About({ onClose }: { onClose: () => void }) {
         <p className="text-base text-white">{t("aboutLead")}</p>
         <p>{t("aboutBody")}</p>
         <p>{t("aboutPrivacy")}</p>
+        <p>{t("aboutExtra")}</p>
       </div>
     </Dialog>
   );

@@ -20,10 +20,21 @@
   "side_panel": {
     "default_path": "sidepanel.html"
   },
+  "sidebar_action": {
+    "default_title": "AIBAY",
+    "default_panel": "sidepanel.html",
+    "default_icon": "icons/icon.png"
+  },
   "background": {
     "service_worker": "background.js"
   },
   "permissions": ["sidePanel", "scripting", "storage", "tabs"],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "aibay@funcomputerlabs",
+      "strict_min_version": "121.0"
+    }
+  },
   "host_permissions": ["https://aibayapp.vercel.app/*", "http://localhost:3000/*", "<all_urls>"],
   "content_scripts": [
     {

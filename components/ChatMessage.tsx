@@ -142,6 +142,22 @@ function MessageActions({
           {t("download")}
         </a>
       ) : null}
+      {content ? (
+        <button
+          type="button"
+          onClick={() => {
+            const share = navigator.share?.bind(navigator);
+            if (share) {
+              void share({ title: "AIBAY", text: content }).catch(() => undefined);
+              return;
+            }
+            void navigator.clipboard.writeText(content);
+          }}
+          className="h-8 rounded-full px-3 text-xs text-zinc-400 transition hover:bg-white/[0.05] hover:text-white"
+        >
+          {t("share")}
+        </button>
+      ) : null}
       {onRegenerate ? (
         <button
           type="button"

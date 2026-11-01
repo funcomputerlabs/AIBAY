@@ -1,11 +1,15 @@
 const DEFAULT_API = "https://aibayapp.vercel.app";
 
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
+  chrome.sidePanel?.setPanelBehavior?.({ openPanelOnActionClick: true }).catch(() => {});
 });
 
 chrome.action.onClicked.addListener((tab) => {
-  if (tab.id) chrome.sidePanel.open({ tabId: tab.id }).catch(() => {});
+  if (chrome.sidebarAction?.open) {
+    void chrome.sidebarAction.open();
+    return;
+  }
+  if (tab?.id) chrome.sidePanel?.open?.({ tabId: tab.id }).catch(() => {});
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
