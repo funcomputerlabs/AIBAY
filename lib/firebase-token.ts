@@ -1,12 +1,15 @@
 import "server-only";
 
-import { isOwnerEmail } from "@/lib/owner";
+export type SignedInUser = {
+  uid: string;
+  email: string;
+};
 
-export async function isOwnerRequest(authorization: string | null) {
+export async function lookupFirebaseUser(authorization: string | null): Promise<SignedInUser | null> {
   const token = authorization?.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
-  if (!token) return false;
+  if (!token) return null;
   const key = process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.trim();
-  if (!key) return false;
+  if (!key) return null;
 
   try {
     const response = await fetch(
@@ -18,10 +21,16 @@ export async function isOwnerRequest(authorization: string | null) {
         signal: AbortSignal.timeout(8_000),
       },
     );
-    if (!response.ok) return false;
-    const payload = (await response.json()) as { users?: Array<{ email?: string }> };
-    return isOwnerEmail(payload.users?.[0]?.email);
+    if (!response.ok) return null;
+    const payload = (await response.json()) as {
+      users?: Array<{ localId?: string; email?: string }>;
+    };
+    const user = payload.users?.[0];
+    const uid = user?.localId?.trim() ?? "";
+    const email = user?.email?.trim() ?? "";
+    if (!uid || !email) return null;
+    return { uid, email };
   } catch {
-    return false;
+    return null;
   }
 }

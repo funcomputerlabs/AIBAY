@@ -5,6 +5,7 @@ export const MAX_MESSAGES = 40;
 export const MAX_TOTAL_CHARS = 80_000;
 export const MAX_BODY_BYTES = 4_000_000;
 export const MAX_STORED_CONVERSATIONS = 50;
+export const MAX_MEMORY_CHARS = 4_000;
 
 export const MAX_ATTACHMENTS = 4;
 export const MAX_IMAGES_PER_REQUEST = 3;

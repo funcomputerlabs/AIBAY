@@ -131,6 +131,11 @@ const en = {
   authTooMany: "Too many attempts. Wait a moment and try again.",
   authDisabled: "Email sign-in is turned off in Firebase. Enable Email/Password.",
   authFailed: "The account request could not be completed.",
+  memory: "Memory",
+  memoryHint: "AIBAY keeps useful facts from this account and uses them in later chats.",
+  memoryGuest: "Memory is available with an account. Guests stay on this device only.",
+  memoryEmpty: "Nothing saved yet. It fills in as you chat.",
+  memoryClear: "Clear memory",
 };
 
 type Copy = typeof en;
@@ -261,6 +266,11 @@ const es: Copy = {
   authTooMany: "Demasiados intentos. Espera un momento e inténtalo de nuevo.",
   authDisabled: "El acceso por correo está apagado en Firebase. Activa Email/Password.",
   authFailed: "No se pudo completar la solicitud de la cuenta.",
+  memory: "Memoria",
+  memoryHint: "AIBAY guarda datos útiles de esta cuenta y los usa en los chats siguientes.",
+  memoryGuest: "La memoria está disponible con una cuenta. El invitado se queda solo en este dispositivo.",
+  memoryEmpty: "Todavía no hay nada. Se irá llenando al chatear.",
+  memoryClear: "Borrar memoria",
 };
 
 const fr: Copy = {
@@ -389,6 +399,11 @@ const fr: Copy = {
   authTooMany: "Trop de tentatives. Patientez un instant et réessayez.",
   authDisabled: "La connexion par e-mail est désactivée dans Firebase. Activez Email/Password.",
   authFailed: "La demande de compte n’a pas abouti.",
+  memory: "Mémoire",
+  memoryHint: "AIBAY garde des faits utiles de ce compte et s’en sert dans les discussions suivantes.",
+  memoryGuest: "La mémoire est disponible avec un compte. Un invité reste uniquement sur cet appareil.",
+  memoryEmpty: "Rien d’enregistré pour le moment. Elle se remplit au fil des discussions.",
+  memoryClear: "Effacer la mémoire",
 };
 
 const pt: Copy = {
@@ -517,6 +532,11 @@ const pt: Copy = {
   authTooMany: "Demasiadas tentativas. Espere um momento e tente de novo.",
   authDisabled: "O acesso por e-mail está desligado no Firebase. Ative Email/Password.",
   authFailed: "Não foi possível concluir o pedido da conta.",
+  memory: "Memória",
+  memoryHint: "A AIBAY guarda factos úteis desta conta e usa-os nos chats seguintes.",
+  memoryGuest: "A memória fica disponível com uma conta. O convidado fica só neste dispositivo.",
+  memoryEmpty: "Ainda não há nada. Vai-se preenchendo à medida que conversas.",
+  memoryClear: "Apagar memória",
 };
 
 const de: Copy = {
@@ -645,6 +665,11 @@ const de: Copy = {
   authTooMany: "Zu viele Versuche. Warte einen Moment und versuche es erneut.",
   authDisabled: "Die E-Mail-Anmeldung ist in Firebase aus. Aktiviere Email/Password.",
   authFailed: "Die Kontoanfrage konnte nicht abgeschlossen werden.",
+  memory: "Gedächtnis",
+  memoryHint: "AIBAY behält nützliche Fakten dieses Kontos und nutzt sie in späteren Chats.",
+  memoryGuest: "Das Gedächtnis gibt es mit einem Konto. Gäste bleiben nur auf diesem Gerät.",
+  memoryEmpty: "Noch nichts gespeichert. Es füllt sich beim Chatten.",
+  memoryClear: "Gedächtnis löschen",
 };
 
 const it: Copy = {
@@ -773,6 +798,11 @@ const it: Copy = {
   authTooMany: "Troppi tentativi. Attendi un momento e riprova.",
   authDisabled: "L’accesso via email è disattivato in Firebase. Attiva Email/Password.",
   authFailed: "La richiesta dell’account non è stata completata.",
+  memory: "Memoria",
+  memoryHint: "AIBAY conserva fatti utili di questo account e li usa nelle chat successive.",
+  memoryGuest: "La memoria è disponibile con un account. L’ospite resta solo su questo dispositivo.",
+  memoryEmpty: "Non c’è ancora nulla. Si riempie mentre chatti.",
+  memoryClear: "Cancella memoria",
 };
 
 const dictionaries: Record<Locale, Copy> = { en, es, fr, pt, de, it };

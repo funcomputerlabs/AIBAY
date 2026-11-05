@@ -21,6 +21,14 @@ service cloud.firestore {
         && request.resource.data.text is string
         && request.resource.data.text.size() < 12000
         && request.resource.data.updatedAt is number;
+      allow create, update: if request.auth != null
+        && request.auth.uid == userId
+        && docId == "memory"
+        && request.resource.data.keys().hasOnly(["enabled", "text", "updatedAt"])
+        && request.resource.data.enabled is bool
+        && request.resource.data.text is string
+        && request.resource.data.text.size() < 6000
+        && request.resource.data.updatedAt is number;
     }
     match /users/{userId}/conversations/{conversationId} {
       allow read, delete: if request.auth != null && request.auth.uid == userId;

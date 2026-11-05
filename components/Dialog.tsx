@@ -48,7 +48,7 @@ export function Dialog({ title, onClose, children }: DialogProps) {
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="relative w-full max-w-md rounded-2xl border border-white/10 bg-black p-6 shadow-2xl outline-none"
+        className="relative max-h-[min(85vh,40rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-white/10 bg-black p-6 shadow-2xl outline-none"
       >
         <div className="flex items-start justify-between gap-4">
           <h2 id={titleId} className="text-lg font-medium tracking-tight text-white">

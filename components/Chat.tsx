@@ -17,8 +17,9 @@ import { seedGallery } from "@/lib/gallery";
 import { useI18n } from "@/lib/i18n";
 import { conversationMarkdown, downloadText } from "@/lib/export";
 import { toApiMessages } from "@/lib/messages";
-import { getAccountIdToken, startAccountSync } from "@/lib/account";
+import { getSignedInIdToken, startAccountSync } from "@/lib/account";
 import { appendImprove, getImproveText } from "@/lib/improve";
+import { getMemoryText, isMemoryEnabled, noteExchange } from "@/lib/memory";
 import { isOwnerEmail } from "@/lib/owner";
 import type { Attachment, ComposerMode } from "@/lib/types";
 import {
@@ -164,17 +165,21 @@ export function Chat() {
     try {
       const last = history[history.length - 1];
       const headers: Record<string, string> = { "Content-Type": "application/json" };
-      const token = canImprove ? await getAccountIdToken() : null;
+      const token = await getSignedInIdToken();
       if (token) headers.Authorization = `Bearer ${token}`;
+      const improving = Boolean(token && canImprove && last?.purpose === "improve");
+      const memoryOn = !improving && Boolean(token) && isMemoryEnabled();
+      const memory = memoryOn ? getMemoryText() : "";
       const response = await fetch("/api/chat", {
         method: "POST",
         headers,
         body: JSON.stringify({
           locale,
           messages: toApiMessages(history.slice(-MAX_MESSAGES)),
-          ...(token && getImproveText() ? { improve: getImproveText() } : {}),
-          ...(token && last?.purpose === "improve" ? { task: "improve" } : {}),
+          ...(token && canImprove && getImproveText() ? { improve: getImproveText() } : {}),
+          ...(improving ? { task: "improve" } : {}),
           ...(options?.voice ? { task: "voice" } : {}),
+          ...(memory ? { memory } : {}),
         }),
         signal: controller.signal,
       });
@@ -215,6 +220,10 @@ export function Chat() {
       }
 
       if (!superseded()) setStatus("idle");
+      if (memoryOn && !superseded()) {
+        const said = [...history].reverse().find((message) => message.role === "user")?.content ?? "";
+        noteExchange(said, accumulated, locale);
+      }
       return accumulated;
     } catch (caught) {
       if (!accumulated.trim()) dropAssistant(conversationId, assistantId);

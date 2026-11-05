@@ -1,9 +1,10 @@
-import { MAX_BODY_BYTES } from "@/lib/constants";
-import { isOwnerRequest } from "@/lib/firebase-token";
+import { MAX_BODY_BYTES, MAX_MEMORY_CHARS } from "@/lib/constants";
+import { lookupFirebaseUser } from "@/lib/firebase-token";
 import { getGlobalImprove, rememberGlobalImprove } from "@/lib/global-improve";
 import { createChatStream, getGroqModel, isGroqConfigured, toPublicError } from "@/lib/groq";
 import { isLocale } from "@/lib/locale";
 import { validateMessages } from "@/lib/messages";
+import { isOwnerEmail } from "@/lib/owner";
 import { readPageContext } from "@/lib/page";
 
 export const runtime = "nodejs";
@@ -49,23 +50,29 @@ export async function POST(request: Request) {
     return Response.json({ error: validation.error }, { status: validation.status });
   }
 
-  const requested = (payload as { locale?: unknown; improve?: unknown; task?: unknown }).locale;
-  const locale = isLocale(requested) ? requested : "en";
-  const owner = await isOwnerRequest(request.headers.get("authorization"));
+  const body = payload as { locale?: unknown; improve?: unknown; task?: unknown; memory?: unknown; page?: unknown };
+  const locale = isLocale(body.locale) ? body.locale : "en";
+  const account = await lookupFirebaseUser(request.headers.get("authorization"));
+  const owner = Boolean(account && isOwnerEmail(account.email));
   const fromOwner =
-    owner && typeof (payload as { improve?: unknown }).improve === "string"
-      ? (payload as { improve: string }).improve.replace(/\u0000/g, "").trim().slice(0, 8_000)
+    owner && typeof body.improve === "string"
+      ? body.improve.replace(/\u0000/g, "").trim().slice(0, 8_000)
       : "";
   if (fromOwner) rememberGlobalImprove(fromOwner);
+  const memory =
+    account && body.task !== "improve" && typeof body.memory === "string"
+      ? body.memory.replace(/\u0000/g, "").trim().slice(0, MAX_MEMORY_CHARS)
+      : "";
   const extra = {
     instructions: fromOwner || (await getGlobalImprove()),
+    ...(memory ? { memory } : {}),
     task:
-      owner && (payload as { task?: unknown }).task === "improve"
+      owner && body.task === "improve"
         ? ("improve" as const)
-        : (payload as { task?: unknown }).task === "voice"
+        : body.task === "voice"
           ? ("voice" as const)
           : undefined,
-    page: readPageContext((payload as { page?: unknown }).page),
+    page: readPageContext(body.page),
   };
 
   if (!isGroqConfigured()) {

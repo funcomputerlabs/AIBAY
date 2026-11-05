@@ -9,6 +9,7 @@ import { FirebaseError } from "firebase/app";
 import { flushCloudSync, loadCloudConversations, setCloudUser } from "@/lib/cloud";
 import { getFirebase, isFirebaseConfigured } from "@/lib/firebase";
 import { loadImproveFromAccount } from "@/lib/improve";
+import { loadMemoryFromAccount, setMemoryUser } from "@/lib/memory";
 import { isOwnerEmail } from "@/lib/owner";
 import { getSnapshot, replaceState } from "@/lib/storage";
 import { MAX_STORED_CONVERSATIONS } from "@/lib/constants";
@@ -76,11 +77,13 @@ export function startAccountSync() {
     const token = ++generation;
     if (!user) {
       setCloudUser(null);
+      setMemoryUser(null);
       publish({ ready: true, configured: true, email: null, warning: null });
       return;
     }
 
     setCloudUser(user.uid);
+    setMemoryUser(user.uid);
     publish({
       ready: true,
       configured: true,
@@ -88,13 +91,14 @@ export function startAccountSync() {
       warning: null,
     });
     void adoptCloud(user.uid, token);
+    void loadMemoryFromAccount();
     if (isOwnerEmail(user.email)) void loadImproveFromAccount();
   });
 }
 
-export async function getAccountIdToken() {
+export async function getSignedInIdToken() {
   const user = getFirebase()?.auth.currentUser;
-  if (!user || !isOwnerEmail(user.email)) return null;
+  if (!user) return null;
   try {
     return await user.getIdToken();
   } catch {
