@@ -132,9 +132,9 @@ const en = {
   authDisabled: "Email sign-in is turned off in Firebase. Enable Email/Password.",
   authFailed: "The account request could not be completed.",
   memory: "Memory",
-  memoryHint: "AIBAY keeps useful facts from this account and uses them in later chats.",
-  memoryGuest: "Memory is available with an account. Guests stay on this device only.",
-  memoryEmpty: "Nothing saved yet. It fills in as you chat.",
+  memoryHint: "When on, AIBAY remembers useful facts from this account and applies them in later chats.",
+  memoryGuest: "Sign in to turn on memory. Without an account, AIBAY cannot keep facts across chats.",
+  memoryEmpty: "Nothing saved yet. After each reply, AIBAY adds useful facts here and uses them next time.",
   memoryClear: "Clear memory",
 };
 
@@ -267,9 +267,9 @@ const es: Copy = {
   authDisabled: "El acceso por correo está apagado en Firebase. Activa Email/Password.",
   authFailed: "No se pudo completar la solicitud de la cuenta.",
   memory: "Memoria",
-  memoryHint: "AIBAY guarda datos útiles de esta cuenta y los usa en los chats siguientes.",
-  memoryGuest: "La memoria está disponible con una cuenta. El invitado se queda solo en este dispositivo.",
-  memoryEmpty: "Todavía no hay nada. Se irá llenando al chatear.",
+  memoryHint: "Si está activa, AIBAY recuerda datos útiles de esta cuenta y los aplica en los chats siguientes.",
+  memoryGuest: "Inicia sesión para activar la memoria. Sin cuenta, AIBAY no puede guardar datos entre chats.",
+  memoryEmpty: "Todavía no hay nada. Tras cada respuesta, AIBAY añade datos útiles aquí y los usa después.",
   memoryClear: "Borrar memoria",
 };
 
@@ -401,8 +401,8 @@ const fr: Copy = {
   authFailed: "La demande de compte n’a pas abouti.",
   memory: "Mémoire",
   memoryHint: "AIBAY garde des faits utiles de ce compte et s’en sert dans les discussions suivantes.",
-  memoryGuest: "La mémoire est disponible avec un compte. Un invité reste uniquement sur cet appareil.",
-  memoryEmpty: "Rien d’enregistré pour le moment. Elle se remplit au fil des discussions.",
+  memoryGuest: "Connectez-vous pour activer la mémoire. Sans compte, AIBAY ne garde pas de faits entre les chats.",
+  memoryEmpty: "Rien d’enregistré pour le moment. Après chaque réponse, AIBAY ajoute des faits utiles ici et s’en sert ensuite.",
   memoryClear: "Effacer la mémoire",
 };
 
@@ -534,8 +534,8 @@ const pt: Copy = {
   authFailed: "Não foi possível concluir o pedido da conta.",
   memory: "Memória",
   memoryHint: "A AIBAY guarda factos úteis desta conta e usa-os nos chats seguintes.",
-  memoryGuest: "A memória fica disponível com uma conta. O convidado fica só neste dispositivo.",
-  memoryEmpty: "Ainda não há nada. Vai-se preenchendo à medida que conversas.",
+  memoryGuest: "Inicia sessão para ativar a memória. Sem conta, a AIBAY não guarda factos entre chats.",
+  memoryEmpty: "Ainda não há nada. Após cada resposta, a AIBAY adiciona factos úteis aqui e usa-os depois.",
   memoryClear: "Apagar memória",
 };
 
@@ -667,8 +667,8 @@ const de: Copy = {
   authFailed: "Die Kontoanfrage konnte nicht abgeschlossen werden.",
   memory: "Gedächtnis",
   memoryHint: "AIBAY behält nützliche Fakten dieses Kontos und nutzt sie in späteren Chats.",
-  memoryGuest: "Das Gedächtnis gibt es mit einem Konto. Gäste bleiben nur auf diesem Gerät.",
-  memoryEmpty: "Noch nichts gespeichert. Es füllt sich beim Chatten.",
+  memoryGuest: "Melde dich an, um das Gedächtnis zu aktivieren. Ohne Konto behält AIBAY keine Fakten über Chats hinweg.",
+  memoryEmpty: "Noch nichts gespeichert. Nach jeder Antwort fügt AIBAY hier nützliche Fakten hinzu und nutzt sie danach.",
   memoryClear: "Gedächtnis löschen",
 };
 
@@ -800,8 +800,8 @@ const it: Copy = {
   authFailed: "La richiesta dell’account non è stata completata.",
   memory: "Memoria",
   memoryHint: "AIBAY conserva fatti utili di questo account e li usa nelle chat successive.",
-  memoryGuest: "La memoria è disponibile con un account. L’ospite resta solo su questo dispositivo.",
-  memoryEmpty: "Non c’è ancora nulla. Si riempie mentre chatti.",
+  memoryGuest: "Accedi per attivare la memoria. Senza account, AIBAY non conserva fatti tra una chat e l’altra.",
+  memoryEmpty: "Non c’è ancora nulla. Dopo ogni risposta, AIBAY aggiunge qui fatti utili e li usa dopo.",
   memoryClear: "Cancella memoria",
 };
 

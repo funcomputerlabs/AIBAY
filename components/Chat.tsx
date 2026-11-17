@@ -19,7 +19,7 @@ import { conversationMarkdown, downloadText } from "@/lib/export";
 import { toApiMessages } from "@/lib/messages";
 import { getSignedInIdToken, startAccountSync } from "@/lib/account";
 import { appendImprove, getImproveText } from "@/lib/improve";
-import { getMemoryText, isMemoryEnabled, noteExchange } from "@/lib/memory";
+import { awaitMemoryIdle, getMemoryText, isMemoryEnabled, noteExchange } from "@/lib/memory";
 import { isOwnerEmail } from "@/lib/owner";
 import type { Attachment, ComposerMode } from "@/lib/types";
 import {
@@ -58,6 +58,23 @@ function saveDraft(id: string, value: string) {
   } catch {
     /* quota */
   }
+}
+
+function memorySourceText(message?: {
+  content: string;
+  attachments?: Array<{ kind: string; name: string; text?: string }>;
+}) {
+  if (!message) return "";
+  const parts: string[] = [];
+  if (message.content.trim()) parts.push(message.content.trim());
+  for (const attachment of message.attachments ?? []) {
+    if (attachment.kind === "file" && attachment.text?.trim()) {
+      parts.push(`Attached file ${attachment.name}:\n${attachment.text.trim().slice(0, 1_200)}`);
+    } else if (attachment.kind === "image") {
+      parts.push(`[Image: ${attachment.name}]`);
+    }
+  }
+  return parts.join("\n\n").slice(0, 2_000);
 }
 
 export function Chat() {
@@ -165,10 +182,16 @@ export function Chat() {
     try {
       const last = history[history.length - 1];
       const headers: Record<string, string> = { "Content-Type": "application/json" };
-      const token = await getSignedInIdToken();
+      let token = await getSignedInIdToken();
+      if (!token && isMemoryEnabled()) {
+        await new Promise((resolve) => window.setTimeout(resolve, 250));
+        token = await getSignedInIdToken();
+      }
       if (token) headers.Authorization = `Bearer ${token}`;
       const improving = Boolean(token && canImprove && last?.purpose === "improve");
       const memoryOn = !improving && Boolean(token) && isMemoryEnabled();
+      if (memoryOn) await awaitMemoryIdle();
+      // Re-read after idle so the latest revised notes leave with this request.
       const memory = memoryOn ? getMemoryText() : "";
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -177,9 +200,10 @@ export function Chat() {
           locale,
           messages: toApiMessages(history.slice(-MAX_MESSAGES)),
           ...(token && canImprove && getImproveText() ? { improve: getImproveText() } : {}),
-          ...(improving ? { task: "improve" } : {}),
-          ...(options?.voice ? { task: "voice" } : {}),
-          ...(memory ? { memory } : {}),
+          ...(improving ? { task: "improve" } : options?.voice ? { task: "voice" } : {}),
+          // Include the key whenever memory is on (even if still empty) so the server
+          // can merge with Firestore and inject notes into brand-new chats.
+          ...(memoryOn ? { memory } : {}),
         }),
         signal: controller.signal,
       });
@@ -221,8 +245,9 @@ export function Chat() {
 
       if (!superseded()) setStatus("idle");
       if (memoryOn && !superseded()) {
-        const said = [...history].reverse().find((message) => message.role === "user")?.content ?? "";
-        noteExchange(said, accumulated, locale);
+        const lastUser = [...history].reverse().find((message) => message.role === "user");
+        const said = memorySourceText(lastUser);
+        if (said) noteExchange(said, accumulated, locale);
       }
       return accumulated;
     } catch (caught) {

@@ -6,6 +6,7 @@ import { isLocale } from "@/lib/locale";
 import { validateMessages } from "@/lib/messages";
 import { isOwnerEmail } from "@/lib/owner";
 import { readPageContext } from "@/lib/page";
+import { loadAccountMemory, resolveMemory } from "@/lib/server-memory";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,17 +53,26 @@ export async function POST(request: Request) {
 
   const body = payload as { locale?: unknown; improve?: unknown; task?: unknown; memory?: unknown; page?: unknown };
   const locale = isLocale(body.locale) ? body.locale : "en";
-  const account = await lookupFirebaseUser(request.headers.get("authorization"));
+  const authorization = request.headers.get("authorization");
+  const idToken = authorization?.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
+  const account = await lookupFirebaseUser(authorization);
   const owner = Boolean(account && isOwnerEmail(account.email));
   const fromOwner =
     owner && typeof body.improve === "string"
       ? body.improve.replace(/\u0000/g, "").trim().slice(0, 8_000)
       : "";
   if (fromOwner) rememberGlobalImprove(fromOwner);
-  const memory =
-    account && body.task !== "improve" && typeof body.memory === "string"
-      ? body.memory.replace(/\u0000/g, "").trim().slice(0, MAX_MEMORY_CHARS)
-      : "";
+  const memoryField = typeof body.memory === "string" ? body.memory : null;
+  const clientMemory = memoryField
+    ? memoryField.replace(/\u0000/g, "").trim().slice(0, MAX_MEMORY_CHARS)
+    : "";
+  let memory = "";
+  if (memoryField !== null && body.task !== "improve" && account) {
+    const remote = idToken ? await loadAccountMemory(account.uid, idToken) : null;
+    memory = resolveMemory(clientMemory, remote);
+  } else if (memoryField !== null && !account) {
+    console.warn("AIBAY chat: memory sent but auth failed; personalization skipped");
+  }
   const extra = {
     instructions: fromOwner || (await getGlobalImprove()),
     ...(memory ? { memory } : {}),
@@ -120,6 +130,7 @@ export async function POST(request: Request) {
       "Content-Type": "text/plain; charset=utf-8",
       "Cache-Control": "no-cache, no-transform",
       "X-Accel-Buffering": "no",
+      "X-AIBAY-Memory": memory ? String(memory.split("\n").filter(Boolean).length) : "0",
     },
   });
 }
